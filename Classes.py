@@ -73,8 +73,11 @@ class DataHandling:
         k = 0
         for row in range(length):
             for col in range(length - row - 1):
-                matrix[row, col + row + 1] = data_list[k]
-                matrix[col + row + 1, row] = data_list[k]
+                value= data_list[k]
+                if value == 'None':
+                    value = 0.0
+                matrix[row, col + row + 1] = value
+                matrix[col + row + 1, row] = value
                 k += 1
 
         matrix[matrix == 0.0] = np.nan
@@ -260,9 +263,10 @@ class Plotting:
         plt.show()
 
     def Hist(self, series, title):
-        series = np.where(series == 0.0, np.nan, series)
-        a = sns.histplot(series, x=series, binwidth=(max(series)/100))
+        #series = np.where(series == 0.0, np.nan, series)
+        a = sns.histplot(series, x=series, bins=8)
         a.set_title(title)
+        plt.savefig(fname='fig_2.png')
         plt.show()
 
 
@@ -313,7 +317,7 @@ class Analysis:
             temp[max_val[0]][max_val[1]] = 0.0
         return np.array(trips), np.array(trips_index)
 
-    def Clustering(self, matrix, Buurten, name):
+    def Clustering(self, matrix, Buurten):
         Graph = nx.Graph()
         matrix = np.nan_to_num(x=matrix, nan=0.0)
         matrix_max = np.max(matrix.flatten())
@@ -325,19 +329,16 @@ class Analysis:
         # normalization_factor = min(x for x in minadvice_list if x is not None)
         for i, row in enumerate(matrix):
             for j, value in enumerate(row[i:]):
-                if value != 0.0 and value < 2700.0:
+                if value != 0.0:
                     # part1 = (1.0/value)
                     # weight_value = part1*normalization_factor
                     Graph.add_edge(Buurten[i], Buurten[j + i], weight=value)
-                elif value != 0.0:
-                    Graph.add_edge(Buurten[i], Buurten[j + i], weight=matrix_max)
 
 
         cluster_dict = nx.clustering(Graph, weight='weight')
 
         cluster_values = list(cluster_dict.values())
         cluster_values = np.array(cluster_values)
-        pickle.dump(cluster_values, open(name + 'cluster_values.p', "wb"))
         return cluster_values
 
 
