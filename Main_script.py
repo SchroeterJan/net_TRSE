@@ -40,7 +40,7 @@ analyzer = Analysis()
 ### Import data to pd DataFrames
 df_nodes = handler.Load_Data(node_vectors, isNode=True)
 df_edges = handler.Load_Data(edge_vectors)
-df_edges_delete = np.array(pickle.load(open('Generated_data/edge_delete_list_popdens.p', 'rb')))
+df_edges_delete = np.array(pickle.load(open('old_scripts/edge_delete_list_popdens.p', 'rb')))
 
 df_edges = df_edges.drop(labels=df_edges_delete)
 
@@ -71,21 +71,21 @@ analyzer.Clustering(matrix=PT_matrix,Buurten=np.array(Buurten['Buurt_code']),nam
 """
 
 
-df_nodes['bike_cluster_new'] = pickle.load(open('Generated_data/bike_newcluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_max_new'] = pickle.load(open('Generated_data/bike_new_maxcluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_inverse'] = pickle.load(open('Generated_data/bike_clustering_new_inversecluster_values.p','rb')).astype(float)
-df_nodes['bike_cluster_inverse_max'] = pickle.load(open('Generated_data/bike_clustering_iverse_maxcluster_values.p','rb')).astype(float)
-df_nodes['bike_cluster_new_limit'] = pickle.load(open('Generated_data/bike_clustering_new_limitcluster_values.p','rb')).astype(float)
+df_nodes['bike_cluster_new'] = pickle.load(open('old_scripts/bike_newcluster_values.p', 'rb')).astype(float)
+df_nodes['bike_cluster_max_new'] = pickle.load(open('old_scripts/bike_new_maxcluster_values.p', 'rb')).astype(float)
+df_nodes['bike_cluster_inverse'] = pickle.load(open('old_scripts/Bike_clustering_new_inversecluster_values.p', 'rb')).astype(float)
+df_nodes['bike_cluster_inverse_max'] = pickle.load(open('old_scripts/bike_clustering_iverse_maxcluster_values.p', 'rb')).astype(float)
+df_nodes['bike_cluster_new_limit'] = pickle.load(open('old_scripts/bike_clustering_new_limitcluster_values.p', 'rb')).astype(float)
 
-PT_clust_new = pickle.load(open('Generated_data/PT_newcluster_values.p', 'rb')).astype(float)
+PT_clust_new = pickle.load(open('old_scripts/PT_newcluster_values.p', 'rb')).astype(float)
 PT_clust_new = np.where(PT_clust_new == 0.0, np.nan, PT_clust_new)
-PT_clust_max_new = pickle.load(open('Generated_data/PT_new_maxcluster_values.p', 'rb')).astype(float)
+PT_clust_max_new = pickle.load(open('old_scripts/PT_new_maxcluster_values.p', 'rb')).astype(float)
 PT_clust_max_new = np.where(PT_clust_max_new== 0.0, np.nan, PT_clust_max_new)
-PT_clust_max_new_limit = pickle.load(open('Generated_data/PT_new_max_newcluster_values.p','rb')).astype(float)
+PT_clust_max_new_limit = pickle.load(open('old_scripts/PT_new_max_newcluster_values.p', 'rb')).astype(float)
 PT_clust_max_new_limit = np.where(PT_clust_max_new_limit==0.0, np.nan, PT_clust_max_new_limit)
-PT_clust_new_inverse = pickle.load(open('Generated_data/PT_clustering_new_inversecluster_values.p','rb')).astype(float)
+PT_clust_new_inverse = pickle.load(open('old_scripts/PT_clustering_new_inversecluster_values.p', 'rb')).astype(float)
 PT_clust_new_inverse = np.where(PT_clust_new_inverse==0.0, np.nan, PT_clust_new_inverse)
-PT_clust_inverse_max = pickle.load(open('Generated_data/PT_clustering_iverse_maxcluster_values.p','rb')).astype(float)
+PT_clust_inverse_max = pickle.load(open('old_scripts/PT_clustering_iverse_maxcluster_values.p', 'rb')).astype(float)
 PT_clust_inverse_max = np.where(PT_clust_inverse_max==0.0, np.nan, PT_clust_inverse_max)
 
 df_nodes['PT_cluster_max_new'] = PT_clust_max_new

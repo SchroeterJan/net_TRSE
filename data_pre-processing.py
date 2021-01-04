@@ -1,5 +1,5 @@
 from Processing_class import *
-from otp_approach import *
+from Routing import *
 
 
 ###RESEARCH CONSTANTS
@@ -16,17 +16,20 @@ variables_of_interest = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
 #Prep.selectPC6()
 
 
-###GENERATE OTP PT DATA
-otp_grabber = OTP_grabber()
-otp_grabber.planner()
+###COLLECT JOURNEY TIMES TRHOUGH ROUTING
+#otp_grabber = OTP_grabber()
+#otp_grabber.planner()
+
+#gh_grabber = GH_grabber()
+#gh_grabber.planner()
 
 
 ###CHECK 9292 DATA
 
 #Prep.compare9292()
 
-#Prep = PassengerCountPrep()
-#Prep.checkOneWays()
+Prep = PassengerCountPrep()
+Prep.relevantStops()
 
 
 

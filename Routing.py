@@ -7,7 +7,7 @@ class OTP_grabber:
     # Constants
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
     Buurten_PC6 = 'Buurten_PC6.csv'
-    OTP_times = 'OTP_times_old.csv'
+    OTP_times = 'OTP_times.csv'
 
     OTP_SERVER_URL = "http://localhost:8080/"
     META = "otp/routers/"
@@ -30,7 +30,7 @@ class OTP_grabber:
 
     def planner(self):
         if os.path.isfile(self.path_OTPtimes):
-            print('removing existing BBGA Buurten')
+            print('removing existing OTP times')
             os.remove(self.path_OTPtimes)
         with open(file=self.path_OTPtimes, mode='w') as OTPtimes:
             OTPtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,WALK_TIME,WALK_DIST,TRANSIT_TIME,TRANSFERS\n')
@@ -70,6 +70,68 @@ class OTP_grabber:
                                        + ',' + str(best_advice['transfers'])
                                        + '\n')
                     except:
-                        OTPtimes.write('None,None,None,None,None\n')
+                        OTPtimes.write('None,None,None,None,None,None,None,None,None\n')
                 print('Finished row ' + str(i))
+
+
+
+class GH_grabber:
+    # Constants
+    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+    Buurten_PC6 = 'Buurten_PC6.csv'
+    GH_times = 'GH_times.csv'
+
+    GH_SERVER_URL = "http://localhost:8989/"
+    Endpoint_info = 'info/'
+    Endpoint_route = "route/"
+
+
+
+    def __init__(self):
+        print("Connecting to " + self.__class__.__name__)
+        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PC6)
+        self.path_GHtimes = os.path.join(self.ROOT_DIR, RawData, self.GH_times)
+        print("Graphhopper routing engine version: " + json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_info).text)['version'])
+        self.loadBuurtPC6()
+
+
+
+    def loadBuurtPC6(self):
+        self.BuurtPC6 = np.array(pd.read_csv(filepath_or_buffer=self.path_BuurtPC6, sep=';'))
+
+
+
+    def planner(self):
+        if os.path.isfile(self.path_GHtimes):
+            print('removing existing Graphhopper times')
+            os.remove(self.path_GHtimes)
+        with open(file=self.path_GHtimes, mode='w') as GHtimes:
+            GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')
+            for i, or_row in enumerate(self.BuurtPC6):
+                for j, dest_row in enumerate(self.BuurtPC6[i + 1:]):
+                    par = {'point': [str(or_row[1])+ ',' + str(or_row[2]), str(dest_row[1]) + ',' +str(dest_row[2])],
+                           'type': 'json',
+                           'locale': 'de',
+                           'elevation': 'true',
+                           'profile': 'bike',
+                           }
+                    advice = json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_route, params=par).text)['paths'][0]
+                    try:
+                        #advice_dur_list = []
+                        #for each in advices:
+                        #    advice_dur_list.append(each['duration'])
+                        #best_advice = advices[np.argmin(advice_dur_list)]
+                        GHtimes.write(par['point'][0]
+                                       + ',' + par['point'][1]
+                                       + ',' + str(advice['time'])
+                                       + ',' + str(advice['distance'])
+                                       + ',' + str(advice['weight'])
+                                       + '\n')
+                    except:
+                        GHtimes.write('None,None,None,None,None,None,None\n')
+                print('Finished row ' + str(i))
+
+
+
+
 
