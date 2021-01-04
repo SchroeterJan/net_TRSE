@@ -7,7 +7,7 @@ class OTP_grabber:
     # Constants
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
     Buurten_PC6 = 'Buurten_PC6.csv'
-    OTP_times = 'OTP_times.csv'
+    OTP_times = 'OTP_times_old.csv'
 
     OTP_SERVER_URL = "http://localhost:8080/"
     META = "otp/routers/"
