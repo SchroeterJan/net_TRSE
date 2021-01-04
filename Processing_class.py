@@ -9,6 +9,7 @@ from scipy.stats import kendalltau
 from shapely.geometry import Point
 import shapely.wkt
 import geopandas
+import itertools
 from matplotlib import pyplot as plt
 
 
@@ -18,8 +19,8 @@ GeneratedData = 'Generated_data'
 BBGA_Buurten = 'BBGA_Buurt.csv'
 
 
-def load(path, sep):
-    return pd.read_csv(filepath_or_buffer=path, sep=sep)
+def load(path, sep, index_col=None):
+    return pd.read_csv(filepath_or_buffer=path, sep=sep, index_col=index_col)
 
 class BBGAPrep:
     # Find root direction
@@ -392,12 +393,14 @@ class PassengerCountPrep:
         self.GVBStop_locations = load(path=self.path_GVBStop_Locations, sep=';')
 
         # Declare actual Train Stations allowing to switch to regional transport (source:
-        # https://www.iamsterdam.com/en/plan-your-trip/getting-around/public-transport/train)
-        NS_stops = {'Station Sloterdijk',
+        # https://en.wikipedia.org/wiki/List_of_railway_stations_in_Amsterdam)
+        NS_stops = {'Centraal Station',
+                    'Station Sloterdijk',
                     'Station Lelylaan',
                     'Station Zuid',
                     'Station RAI',
                     'Muiderpoortstation',
+                    'Amstelstation',
                     'Station Bijlmer ArenA',
                     'Station Science Park',
                     'Station Holendrecht',
@@ -470,7 +473,50 @@ class PassengerCountPrep:
         self.PassCount_data = self.PassCount_data.loc[rel_connections.values]
         self.PassCount_data.to_csv(path_or_buf=self.path_relPassCount, sep=';')
 
+    def assignPassCounts(self):
+        self.relevant_PassCount_data = load(path=self.path_relPassCount, sep=';')
+        self.Buurten_Stops_Association = load(path=self.path_BuurtStopsAss, sep=';', index_col=0)
+        self.relevant_Locations = load(path=self.path_relStop_locations, sep=';')
 
+        flow_matrix = pd.DataFrame(index=self.relevant_Locations.Stop_name, columns=self.relevant_Locations.Stop_name)
+
+        #a = [flow_matrix.at[flow[1], flow[2]] for flow in np.array(self.relevant_PassCount_data)]
+
+        for flow in np.array(self.relevant_PassCount_data):
+            flow_matrix.at[flow[1], flow[2]] = flow[3]
+
+        flow_matrix = flow_matrix.where(flow_matrix != '<50')
+        flow_matrix = flow_matrix.fillna(value=0.0)
+        flow_matrix = flow_matrix.astype(float)
+        """
+        outflows = flow_matrix.sum(axis=0)
+        inflows = flow_matrix.sum(axis=1)
+        Buurt_flows = np.zeros((len(self.Buurten_Stops_Association.index), 2))
+        for i, outflow in enumerate(outflows.to_numpy()):
+            Associated_Buurten = np.where(self.Buurten_Stops_Association.to_numpy()[:, i] == 1.0)[0]
+            Buurt_flows[Associated_Buurten, 0] += (outflow / len(Associated_Buurten))
+            Buurt_flows[Associated_Buurten, 1] += (inflows[i] / len(Associated_Buurten))
+
+        BuurtBBGA = transportPrep()
+        BuurtBBGA.loadBuurtBBGA()
+
+        BuurtBBGA.BBGA_Buurt_data['Buurt_outflows'] = Buurt_flows[:, 0]
+        BuurtBBGA.BBGA_Buurt_data['Buurt_inflows'] = Buurt_flows[:, 1]
+        BuurtBBGA.BBGA_Buurt_data.to_csv('new_Buurt_data.csv', sep=';')
+        """
+
+        Buurt_flow_matrix = np.zeros((len(self.Buurten_Stops_Association.index),
+                                      len(self.Buurten_Stops_Association.index)))
+        for origin, flow_row in enumerate(flow_matrix.to_numpy()):
+            or_associations = np.where(self.Buurten_Stops_Association.to_numpy()[:, origin] == 1.0)[0]
+            for destination, flow in enumerate(flow_row):
+                dest_associations = np.where(self.Buurten_Stops_Association.to_numpy()[:, destination] == 1.0)[0]
+                trip_combinations = np.array(list(itertools.product(or_associations, dest_associations)))
+                trip_combinations = trip_combinations[np.invert([np.all(combination == combination[0])
+                                                                 for combination in trip_combinations])]
+                for combination in trip_combinations:
+                    Buurt_flow_matrix[combination[0], combination[1]] += (flow/len(trip_combinations))
+        a = 10
 
 
     def checkOneWays(self):

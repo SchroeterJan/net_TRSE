@@ -29,7 +29,6 @@ variables_of_interest = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
 #Prep.compare9292()
 
 Prep = PassengerCountPrep()
-Prep.relevantStops()
-
+Prep.assignPassCounts()
 
 
