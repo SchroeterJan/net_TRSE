@@ -25,10 +25,13 @@ variables_of_interest = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
 
 
 ###CHECK 9292 DATA
-
 #Prep.compare9292()
 
-Prep = PassengerCountPrep()
-Prep.assignPassCounts()
+### PREPARE PASSENGER COUNT DATA
+PrepPassC = PassengerCountPrep()
+#PrepPassC.assignStopLocations()
+#PrepPassC.relevantStops()
+#PrepPassC.filterPassCount()
+PrepPassC.assignPassCounts()
 
 
