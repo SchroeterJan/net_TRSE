@@ -448,6 +448,8 @@ class transportPrep:
     Buurten_PC6 = 'Buurten_PC6.csv'
     OTP_times = 'OTP_times.csv'
     OTP_times_old = 'OTP_times_old.csv'
+    Buurten_PT_times = 'Buurten_PT_times.csv'
+    Buurten_bike_times = 'Buurten_bike_times.csv'
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
@@ -456,27 +458,21 @@ class transportPrep:
         self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PC6)
         self.path_OTPtimes = os.path.join(self.ROOT_DIR, RawData, self.OTP_times)
         self.path_OTPtimes_old = os.path.join(self.ROOT_DIR, RawData, self.OTP_times_old)
+        self.path_BuurtPTtimes = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PT_times)
+        self.path_Buurtbiketimes = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_bike_times)
+        self.BBGA_Buurt_data = pd.read_csv(filepath_or_buffer=self.path_BuurtBBGA, sep=';', index_col='Buurt_code')
         self.fair = fair
 
 
-
-
-
-    def loadPC6(self):
-        self.PC6_data = pd.read_csv(filepath_or_buffer=self.path_PC6Info, sep=';')
-
-    def loadBuurtBBGA(self):
-        self.BBGA_Buurt_data = pd.read_csv(filepath_or_buffer=self.path_BuurtBBGA, sep=';', index_col='Buurt_code')
 
     def loadOTPtimes(self):
         self.OTP_times_data = pd.read_csv(filepath_or_buffer=self.path_OTPtimes, sep=',')
         self.OTP_times_data_old = pd.read_csv(filepath_or_buffer=self.path_OTPtimes, sep=',')
 
     def selectPC6(self):
-        self.loadPC6()
-        self.loadBuurtBBGA()
+        self.PC6_data = pd.read_csv(filepath_or_buffer=self.path_PC6Info, sep=';')
         if os.path.isfile(self.path_BuurtPC6):
-            print('removing existing BBGA Buurten')
+            print('removing existing Buurten PC6 Association')
             os.remove(self.path_BuurtPC6)
         with open(file=self.path_BuurtPC6, mode='w') as BuurtPC6:
             BuurtPC6.write('Buurt_code;PC6_LAT;PC6_LNG\n')
@@ -503,8 +499,53 @@ class transportPrep:
                     continue
 
 
+    def Build_Matrix(self, length, data_list):
+        matrix = np.zeros([length, length], dtype=float)
+        k = 0
+        for row in range(length):
+            for col in range(length - row - 1):
+                value= data_list[k]
+                if value == 'None':
+                    value = 0.0
+                matrix[row, col + row + 1] = value
+                matrix[col + row + 1, row] = value
+                k += 1
+
+        matrix[matrix == 0.0] = np.nan
+        return matrix
+
+
+    def prepareTransport_times(self):
+        Buurten_times = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'Buurten_noParks.p'), "rb"))
+        BuurtBBGA = set(self.BBGA_Buurt_data.index)
+        BuurtDiff = [i for i, item in enumerate(Buurten_times) if item not in BuurtBBGA]
+
+        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData,'minadvice_PT.p'), "rb"))
+        bike_times = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'bike_time_in_seconds.p'), "rb"))
+
+        matrix_9292 = self.Build_Matrix(length=len(Buurten_times), data_list=minadvice_9292)
+        matrix_bike = self.Build_Matrix(length=len(Buurten_times), data_list=bike_times)
+        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
+        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
+        matrix_bike = np.delete(arr=matrix_bike, obj=BuurtDiff, axis=0)
+        matrix_bike = np.delete(arr=matrix_bike, obj=BuurtDiff, axis=1)
+
+        Buurten_times = np.delete(arr=Buurten_times, obj=BuurtDiff)
+
+        matrix_9292 = pd.DataFrame(matrix_9292, index=pd.Series(Buurten_times), columns=pd.Series(Buurten_times))
+        matrix_bike = pd.DataFrame(matrix_bike, index=pd.Series(Buurten_times), columns=pd.Series(Buurten_times))
+        matrix_9292 = matrix_9292.reindex(index=self.BBGA_Buurt_data.index)
+        matrix_bike = matrix_bike.reindex(index=self.BBGA_Buurt_data.index)
+        matrix_9292 = matrix_9292.reset_index().drop(columns='Buurt_code')
+        matrix_bike = matrix_bike.reset_index().drop(columns='Buurt_code')
+        matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
+        matrix_bike = matrix_bike.reindex(self.BBGA_Buurt_data.index, axis=1)
+        matrix_bike.to_csv(path_or_buf=self.path_Buurtbiketimes, sep=';')
+        matrix_9292.to_csv(path_or_buf=self.path_BuurtPTtimes, sep=';')
+
+
+
     def compare9292(self):
-        self.loadBuurtBBGA()
         self.loadOTPtimes()
 
         Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'Buurten_noParks.p'), "rb"))
@@ -524,7 +565,7 @@ class transportPrep:
                     OTP_times[i] = float(each)+(60.0-a)
             except:
                 continue
-"""
+        """
 
         matrix_OTP = DataHandling().Build_Matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
                                                  data_list=OTP_times)
@@ -543,9 +584,11 @@ class transportPrep:
         self.BBGA_Buurt_data['clust_OTP'] = Analysis().Clustering(matrix=matrix_OTP,
                                                                    Buurten=np.array(self.BBGA_Buurt_data.index))
 
-        self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'), index=True, index_label='Buurt_code', sep=';')
+        self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'),
+                                    index=True, index_label='Buurt_code', sep=';')
 
-        clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'), sep=';')
+        clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'),
+                                 sep=';')
         temp = np.array(clust_comp['clust_9292']).argsort()
         ranks_9292 = np.empty_like(temp)
         ranks_9292[temp] = np.arange(len(np.array(clust_comp['clust_9292'])))
@@ -553,8 +596,4 @@ class transportPrep:
         ranks_OTP = np.empty_like(temp)
         ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
         clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
-
-
-
-
 

@@ -5,8 +5,6 @@ import pickle
 import seaborn as sns
 import matplotlib.pyplot as plt
 import networkx as nx
-import requests as rq
-import math
 
 
 class DataHandling:

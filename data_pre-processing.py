@@ -2,21 +2,27 @@ from Processing_class import *
 from Routing import *
 
 
-###RESEARCH CONSTANTS
+### CONSTANTS
 year = 2017
 variables_of_interest = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
                          'BEVTOTAAL', 'SKSES_GEM', 'IHHINK_GEM', 'PREGWERKL_P']
 
 
-###EXECUTE BBGA PREPARATION
+### EXECUTE BBGA PREPARATION
 #BBGAPrep(vars=variables_of_interest, year=year)
 
 
-#Prep = transportPrep()
-#Prep.selectPC6()
+### PREPARE TRANSPORT DATA
+#TransPrep = transportPrep()
+#TransPrep.selectPC6()
+#TransPrep.prepareTransport_times()
 
 
-###COLLECT JOURNEY TIMES TRHOUGH ROUTING
+### CHECK 9292 DATA
+#TransPrep.compare9292()
+
+
+### COLLECT JOURNEY TIMES TRHOUGH ROUTING
 #otp_grabber = OTP_grabber()
 #otp_grabber.planner()
 
@@ -24,14 +30,11 @@ variables_of_interest = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
 #gh_grabber.planner()
 
 
-###CHECK 9292 DATA
-#Prep.compare9292()
-
 ### PREPARE PASSENGER COUNT DATA
-PrepPassC = PassengerCountPrep()
+#PrepPassC = PassengerCountPrep()
 #PrepPassC.assignStopLocations()
 #PrepPassC.relevantStops()
 #PrepPassC.filterPassCount()
-PrepPassC.assignPassCounts()
+#PrepPassC.assignPassCounts()
 
 
