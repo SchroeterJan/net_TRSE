@@ -31,7 +31,7 @@ class BBGAPrep:
 
 
     # Initialize class
-    def __init__(self, vars, year):
+    def __init__(self, vars, year, min_popdens):
         print("Initializing " + self.__class__.__name__)
         self.path_BBGA = os.path.join(self.ROOT_DIR, RawData, self.BBGA)
         self.path_BuurtBBGA = os.path.join(self.ROOT_DIR, GeneratedData, BBGA_Buurten)
@@ -44,7 +44,7 @@ class BBGAPrep:
         for variable in vars:
             self.extract_var(var=variable, year=year)
         ###FILTER BUURTEN BY POPULATION PER KM2
-        self.filterbuurten()
+        self.filterbuurten(min_popdens)
         ###MERGE DATA FRAMES AND STORE
         self.mergestore()
 
@@ -77,7 +77,7 @@ class BBGAPrep:
                     self.df_vars.at[str(line_array[1]), var] = line_array[3]
 
     # filter by population density
-    def filterbuurten(self):
+    def filterbuurten(self, min_popdens):
         if 'Buurten_data' not in globals():
             self.loadbuurten()
         del_list = []                                                               # declare filter list
@@ -85,7 +85,7 @@ class BBGAPrep:
             try:
                 Pop_km2 = float(self.df_vars.at[Buurten_code, 'BEVTOTAAL'], ) / (
                         self.Buurten_data.at[i, 'Opp_m2'] / 1000000.0)
-                if Pop_km2 <= 100.0:
+                if Pop_km2 <= min_popdens:
                     del_list.append(Buurten_code)
             except:
                 del_list.append(Buurten_code)
@@ -273,7 +273,7 @@ class PassengerCountPrep:
         # GVBStop_locations.to_csv(path_or_buf=self.path_GVBStop_Locations, index=True, index_label='Buurt_code', sep=';')
 
 
-    def relevantStops(self):
+    def relevantStops(self, proximity_measure, range_factor):
         self.GVBStop_locations = load(path=self.path_GVBStop_Locations, sep=';')
 
         # Declare actual Train Stations allowing to switch to regional transport (source:
@@ -311,7 +311,7 @@ class PassengerCountPrep:
 
         # Distance Matrix of all Stops (Points) and Buurten (Polygons)
         Stops_Buurten_distance_matrix = GVB_Stop_Points.apply(lambda Stop: Buurt_Polygons.distance(Stop))
-        Short_Distances, a = np.where(Stops_Buurten_distance_matrix <= 0.0005)
+        Short_Distances, a = np.where(Stops_Buurten_distance_matrix <= proximity_measure)
         relevant_Stops = np.unique(Short_Distances)
         self.GVBStop_locations = self.GVBStop_locations.iloc[relevant_Stops]
 
@@ -328,11 +328,11 @@ class PassengerCountPrep:
         # run Buurt-Stop-Assignment scheme
         for i, Buurt_Stop_Distances in enumerate(Stops_Buurten_distance_matrix):
             # check for stops in proximity and within the Buurt
-            Stops = np.where(Buurt_Stop_Distances <= 0.0005)[0].tolist()
+            Stops = np.where(Buurt_Stop_Distances <= proximity_measure)[0].tolist()
             # else check for closest Stop and except all Stops up to 10% further than this
             if len(Stops) == 0:
                 mindist = np.min(Buurt_Stop_Distances[np.nonzero(Buurt_Stop_Distances)])
-                extra_mile = mindist * 1.10
+                extra_mile = mindist * (1.0 + range_factor)
                 Stops = np.where(Buurt_Stop_Distances <= extra_mile)[0].tolist()
             # marking assigned stops
             Buurt_Stop_Distances[Stops] = True
@@ -540,8 +540,8 @@ class transportPrep:
         matrix_bike = matrix_bike.reset_index().drop(columns='Buurt_code')
         matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
         matrix_bike = matrix_bike.reindex(self.BBGA_Buurt_data.index, axis=1)
-        matrix_bike.to_csv(path_or_buf=self.path_Buurtbiketimes, sep=';')
-        matrix_9292.to_csv(path_or_buf=self.path_BuurtPTtimes, sep=';')
+        matrix_bike.to_csv(path_or_buf=self.path_Buurtbiketimes, sep=';', index=False)
+        matrix_9292.to_csv(path_or_buf=self.path_BuurtPTtimes, sep=';', index=False)
 
 
 

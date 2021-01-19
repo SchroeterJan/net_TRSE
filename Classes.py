@@ -1,3 +1,4 @@
+from Processing_class import *
 import os
 import pandas as pd
 import numpy as np
@@ -10,76 +11,33 @@ import networkx as nx
 class DataHandling:
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    BBGA_year = '2017'
+    Buurten_Data_file = 'BBGA_Buurt.csv'
+    PT_times_file = 'Buurten_PT_times.csv'
+    Bike_times_file = 'Buurten_bike_times.csv'
+    Flows_file = 'Buurten_flows.csv'
 
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
+        self.path_Buurten_Data = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_Data_file)
+        self.path_PT_times = os.path.join(self.ROOT_DIR, GeneratedData, self.PT_times_file)
+        self.path_Bike_times = os.path.join(self.ROOT_DIR, GeneratedData, self.Bike_times_file)
+        self.path_Flows = os.path.join(self.ROOT_DIR, GeneratedData, self.Flows_file)
+        self.Load_Data()
 
-    def Load_Buurten(self):
-        Buurten = pd.read_csv(filepath_or_buffer=(os.path.join(self.ROOT_DIR, 'Generated_data', 'Buurten_noParks' +
-                                                               '.csv')), sep=';')
-        return Buurten
 
-
-    def Load_Data(self, Names_dict, isNode=False):
+    def Load_Data(self):
         print("Loading data")
-        Buurten = np.array(self.Load_Buurten()['Buurt_code'])
-        if isNode:
-            df = pd.DataFrame(index=Buurten)
-            df['Buurt_code'] = Buurten
-        else:
-            df = pd.DataFrame()
-        for variable in Names_dict:
-            a = pickle.load(open(os.path.join(self.ROOT_DIR, 'Generated_data', (Names_dict[variable] +
-                                                                                '.p')), "rb")).astype(float)
-            a = np.where(a==0.0, np.nan, a)
-            df[variable] = a
-        return df
+        self.Buurten_data = pd.read_csv(filepath_or_buffer=self.path_Buurten_Data, sep=';')
+        self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
+        self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
+        self.Flows = pd.read_csv(filepath_or_buffer=self.path_Flows, sep=';')
 
 
-    def ExtractBBGA(self, variable_name):
-        BBGA = pd.read_csv('Raw_data/bbga_latest_and_greatest.csv', delimiter=';')
-        Buurten = self.Load_Buurten()['Buurt_code']
+    def Write_data(self, path, data):
+        print("Writing data")
+        data.to_csv(path_or_buf=path, sep=';')
 
-        BBGA = BBGA.to_numpy()
-        BBGA_gran = BBGA[:, 1]
-
-        temp = set(Buurten)
-        res = [i for i, val in enumerate(BBGA_gran) if val in temp]
-
-        BBGA_Buurt = BBGA[res[0]:res[-1]]
-        BBGA_Buurt_variable = []
-
-        for each in BBGA_Buurt:
-            if each[2] == variable_name:
-                BBGA_Buurt_variable.append(each)
-
-        years = np.unique(np.array(BBGA_Buurt_variable)[:, 0])
-        df_BBGA = pd.DataFrame(index=Buurten, columns=years)
-
-        for each in BBGA_Buurt_variable:
-            df_BBGA.loc[each[1], each[0]] = each[3]
-
-        df_BBGA = df_BBGA.iloc[:len(Buurten), :]
-        pickle.dump(df_BBGA, open(variable_name + ".p", "wb"))
-
-
-
-    def Build_Matrix(self, length, data_list):
-        matrix = np.zeros([length, length], dtype=float)
-        k = 0
-        for row in range(length):
-            for col in range(length - row - 1):
-                value= data_list[k]
-                if value == 'None':
-                    value = 0.0
-                matrix[row, col + row + 1] = value
-                matrix[col + row + 1, row] = value
-                k += 1
-
-        matrix[matrix == 0.0] = np.nan
-        return matrix
 
     def Build_speed_vector(self, variable, euclid, name):
         speed = []
@@ -299,7 +257,8 @@ class Plotting:
 
 class Analysis:
 
-    def __init__(self):
+    def __init__(self, handler):
+        self.handler = handler
         print("Initializing " + self.__class__.__name__)
 
     def find_max(self, matrix2, max_extend):
@@ -315,26 +274,24 @@ class Analysis:
             temp[max_val[0]][max_val[1]] = 0.0
         return np.array(trips), np.array(trips_index)
 
-    def Clustering(self, matrix, Buurten):
+    def Clustering(self, matrix):
         Graph = nx.Graph()
         matrix = np.nan_to_num(x=matrix, nan=0.0)
-        matrix_max = np.max(matrix.flatten())
+        Buurten = np.array(self.handler.Buurten_data['Buurt_code'])
 
         # create a node for each of these unique locations
         for Buurt in Buurten:
             Graph.add_node(Buurt)
 
-        # normalization_factor = min(x for x in minadvice_list if x is not None)
+        # create edges between all nodes and populate them with travel times as weights
         for i, row in enumerate(matrix):
             for j, value in enumerate(row[i:]):
                 if value != 0.0:
-                    # part1 = (1.0/value)
-                    # weight_value = part1*normalization_factor
-                    Graph.add_edge(Buurten[i], Buurten[j + i], weight=value)
+                    Graph.add_edge(Buurten[i],
+                                   Buurten[j + i], weight=value)
 
 
         cluster_dict = nx.clustering(Graph, weight='weight')
-
         cluster_values = list(cluster_dict.values())
         cluster_values = np.array(cluster_values)
         return cluster_values

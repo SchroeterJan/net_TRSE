@@ -1,5 +1,6 @@
 from Classes import *
 
+"""
 ### Variables relating to the nodes
 node_vectors = {'bike_clust' :'bike_network_cluster_values',
                 'bike_clust_max':'bike_network_cluster_values_max30',
@@ -29,88 +30,33 @@ edge_vectors = {'Edu_difference': 'Education_difference',
                   'bike_speed': 'bike_speed',
                   'PT_speed': 'PT_speed',
                   }
-
+"""
 
 ### Class objects
 handler = DataHandling()
 plotter = Plotting()
-analyzer = Analysis()
+analyzer = Analysis(handler=handler)
 
+#PT_cluster = analyzer.Clustering(matrix=np.array(handler.PT_times))
+#Bike_cluster = analyzer.Clustering(matrix=np.array(handler.Bike_times))
 
-### Import data to pd DataFrames
-df_nodes = handler.Load_Data(node_vectors, isNode=True)
-df_edges = handler.Load_Data(edge_vectors)
-df_edges_delete = np.array(pickle.load(open('old_scripts/edge_delete_list_popdens.p', 'rb')))
-
-df_edges = df_edges.drop(labels=df_edges_delete)
-
-Buurten = handler.Load_Buurten()
-Pop_dens = []
-low_dens = []
-low_index =[]
-
-for i, each in enumerate(np.array(df_nodes['Pop'])):
-    Pop_dens_i = (each/(np.array(df_nodes['Buurten_size'])[i]/1000000))
-    Pop_dens.append(Pop_dens_i)
-    if Pop_dens_i <= 100:
-        low_dens.append(np.array(Buurten['Buurt_code'])[i])
-        low_index.append(i)
-
-low_dens= np.array(low_dens)
-Pop_dens = np.array(Pop_dens)
-df_nodes['Pop_dens'] = Pop_dens
-
-df_nodes = df_nodes.drop(labels=low_dens)
-Buurten = Buurten.drop(labels=low_index)
+Buurten_cluster = pd.read_csv('Generated_data/Buurten_cluster.csv', sep=';')
+Buurten_cluster = Buurten_cluster.replace([0], np.nan)
 
 
 
-"""
-PT_matrix = handler.Build_Matrix(length=len(np.array(df_nodes['Pop'])),data_list=np.array(df_edges['bike_time']))
-analyzer.Clustering(matrix=PT_matrix,Buurten=np.array(Buurten['Buurt_code']),name='bike_clustering_new_limit')
-"""
 
-
-df_nodes['bike_cluster_new'] = pickle.load(open('old_scripts/bike_newcluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_max_new'] = pickle.load(open('old_scripts/bike_new_maxcluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_inverse'] = pickle.load(open('old_scripts/Bike_clustering_new_inversecluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_inverse_max'] = pickle.load(open('old_scripts/bike_clustering_iverse_maxcluster_values.p', 'rb')).astype(float)
-df_nodes['bike_cluster_new_limit'] = pickle.load(open('old_scripts/bike_clustering_new_limitcluster_values.p', 'rb')).astype(float)
-
-PT_clust_new = pickle.load(open('old_scripts/PT_newcluster_values.p', 'rb')).astype(float)
-PT_clust_new = np.where(PT_clust_new == 0.0, np.nan, PT_clust_new)
-PT_clust_max_new = pickle.load(open('old_scripts/PT_new_maxcluster_values.p', 'rb')).astype(float)
-PT_clust_max_new = np.where(PT_clust_max_new== 0.0, np.nan, PT_clust_max_new)
-PT_clust_max_new_limit = pickle.load(open('old_scripts/PT_new_max_newcluster_values.p', 'rb')).astype(float)
-PT_clust_max_new_limit = np.where(PT_clust_max_new_limit==0.0, np.nan, PT_clust_max_new_limit)
-PT_clust_new_inverse = pickle.load(open('old_scripts/PT_clustering_new_inversecluster_values.p', 'rb')).astype(float)
-PT_clust_new_inverse = np.where(PT_clust_new_inverse==0.0, np.nan, PT_clust_new_inverse)
-PT_clust_inverse_max = pickle.load(open('old_scripts/PT_clustering_iverse_maxcluster_values.p', 'rb')).astype(float)
-PT_clust_inverse_max = np.where(PT_clust_inverse_max==0.0, np.nan, PT_clust_inverse_max)
-
-df_nodes['PT_cluster_max_new'] = PT_clust_max_new
-df_nodes['PT_cluster_new'] = PT_clust_new
-df_nodes['PT_cluster_new_limit'] = PT_clust_max_new_limit
-df_nodes['PT_cluster_inverse'] = PT_clust_new_inverse
-df_nodes['PT_cluster_inverse_max'] = PT_clust_inverse_max
-
-
-### Create CSV for QGIS
-"""
-Buurten_info_extended = pd.merge(Buurten, df_nodes, on='Buurt_code')
-Buurten_info_extended.to_csv(path_or_buf='Buurten_info_inverse.csv', sep=';')
-"""
-"""
-largest_extend= 5
-largest = np.argsort(np.array(df_nodes['PT_cluster_new']))[-largest_extend:]
-plotter.Scatter(df=df_nodes,y='PT_cluster_new_limit',x='bike_cluster_new',
+plotter.Scatter(df=Buurten_cluster,y='PT_cluster',x='Bike_cluster',
                 xlabel= 'Clustering coefficient for journeys by bike',
                 ylabel= 'Clustering coefficient for journeys by \nPublic Transport (maximum 45 Minutes)',
                 title = 'Bike vs. Public Transport')
 
-"""
+
+
 Income_thresholded = handler.Thresholding(variable=np.array(df_nodes['Income'], dtype=float), largest_extend=20)
-unemployment_thresholded = handler.Thresholding(variable=np.array(df_nodes['no Job'], dtype=float), largest_extend=20)
+#unemployment_thresholded = handler.Thresholding(variable=np.array(df_nodes['no Job'], dtype=float), largest_extend=20)
+
+
 """
 #plotter.Correlation_Heatmap(df_nodes)
 plotter.MultiScatter(suptitle='Bike vs. Public Transport colored by socioeconomic variables',
@@ -183,20 +129,6 @@ a = 10
 
 
 
-####Neglecting Buurts by Population
-"""
-best = np.array(df_nodes['Pop'])
-
-best_nan = np.isnan(best)
-too_small = list(np.where(best_nan == True)[0])
-
-for i, each in enumerate(best):
-    if each <= 50.0:
-        too_small.append(i)
-
-
-df_nodes = df_nodes.drop(labels=np.array(too_small))
-"""
 
 
 
