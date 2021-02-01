@@ -8,4 +8,7 @@ Available Data Set input:
 1. Travel-times for different modes
   a. Bike (e.g. Graphhopper=https://github.com/graphhopper/graphhopper)
   b. Public Transport (e.g. OpenTripPlanner=https://github.com/opentripplanner/OpenTripPlanner)
+2. Socio-economic data
+  e.g. for the example Amsterdam, open data census from https://data.amsterdam.nl/datasets/G5JpqNbhweXZSw/basisbestand-gebieden-amsterdam-bbga/
+  
   
