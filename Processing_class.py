@@ -1,5 +1,5 @@
 from Classes import *
-import os
+from config import *
 import pandas as pd
 import numpy as np
 from haversine import haversine, Unit
@@ -12,95 +12,81 @@ import geopandas
 import itertools
 
 
-global RawData, GeneratedData, BBGA_Buurten, load
-RawData = 'Raw_data'
-GeneratedData = 'Generated_data'
-BBGA_Buurten = 'BBGA_Buurt.csv'
-
 
 def load(path, sep, index_col=None):
     return pd.read_csv(filepath_or_buffer=path, sep=sep, index_col=index_col)
 
-class BBGAPrep:
-    # Find root direction
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-
-    # Declare paths to data
-    BBGA = 'bbga_latest_and_greatest.csv'
-    BuurtenInfo = 'GEBIED_BUURTEN.csv'
-
+class SE_Neighborhoods:
+    # set up DataFrame for socio-economic variables
+    neighborhood_se = []
 
     # Initialize class
-    def __init__(self, vars, year, min_popdens):
+    def __init__(self, dir_data, columns, min_popdens):
         print("Initializing " + self.__class__.__name__)
-        self.path_BBGA = os.path.join(self.ROOT_DIR, RawData, self.BBGA)
-        self.path_BuurtBBGA = os.path.join(self.ROOT_DIR, GeneratedData, BBGA_Buurten)
-        self.path_BuurtenInfo = os.path.join(self.ROOT_DIR, RawData, self.BuurtenInfo)
-        self.df_vars = pd.DataFrame()  # DataFrame for extracted BBGA variables
+        self.path_se = os.path.join(dir_data, file_se)
+        self.path_geo = os.path.join(dir_data, file_geo)
 
-        ###CROP BBGA TO BUURT LEVEL
-        self.buurtcrop()
-        ###EXTRACT VARIABLES
-        for variable in vars:
-            self.extract_var(var=variable, year=year)
-        ###FILTER BUURTEN BY POPULATION PER KM2
-        self.filterbuurten(min_popdens)
-        ###MERGE DATA FRAMES AND STORE
-        self.mergestore()
 
-    # Load data about Buurten
-    def loadbuurten(self):
-        self.Buurten_data = pd.read_csv(filepath_or_buffer=self.path_BuurtenInfo, sep=';')
+        self.geo_id_col = columns['geo_id_col']
+        self.pop_col = columns['pop_col']
+        self.size_col = columns['size_col']
+        self.geo_col_se = columns['geo_id_se']
+        self.year_col = columns['year_col']
+        self.se_var_col = columns['se_var_col']
+        self.se_col = columns['se_col']
 
-    # crop BBGA to Buurten level
-    def buurtcrop(self):
-        if 'Buurten_data' not in globals():
-            self.loadbuurten()
-        if os.path.isfile(self.path_BuurtBBGA):
-            print('removing existing BBGA Buurten')
-            os.remove(self.path_BuurtBBGA)
-        print('cropping BBGA')
-        Buurten_Codes = set(self.Buurten_data['Buurt_code'])
-        with open(file=self.path_BBGA, mode='r') as BBGA:                           # open BBGA
-            with open(file=self.path_BuurtBBGA, mode='w') as BuurtBBGA:             # create new Buurten BBGA file
-                for line in BBGA:
-                    if line.split(sep=';')[1] in Buurten_Codes:
-                        BuurtBBGA.write(line)
+        # load geographic data set if found
+        if os.path.isfile(self.path_geo):
+            print('loading geo data of the city')
+            self.geo_data = pd.read_csv(filepath_or_buffer=self.path_geo, sep=';')
+        else:
+            print('ERROR - No geographic data found at: ' + self.path_geo)
+
+        header = open(file=self.path_se, mode='r').readline()
+        header = np.array([i.strip() for i in header.split(sep=';')])
+        self.geo_col_ind = np.where(header == self.geo_col_se)[0][0]
+        self.year_col_ind = np.where(header == self.year_col)[0][0]
+        self.se_var_col_ind = np.where(header == self.se_var_col)[0][0]
+        self.se_col_ind = np.where(header == self.se_col)[0][0]
+        self.neighborhood_se.append(header.tolist())
+
+
+
+    # crop socio-economic data according to geographic data
+    def crop_se(self, year):
+        print('cropping socio-economic data')
+        geo_ids = set(self.geo_data[self.geo_id_col])
+
+        if os.path.isfile(self.path_se):
+            with open(file=self.path_se, mode='r') as se:                                    # open socio-economic data set
+                for line in se:
+                    split = line.split(sep=';')
+                    if split[self.geo_col_ind] in geo_ids and split[self.year_col_ind] == str(year):
+                        self.neighborhood_se.append(split)
+        else:
+            print('ERROR - No socio-economic data found at: ' + self.path_se)
+
 
     # extract variables of interest from Buurten BBGA
-    def extract_var(self, var, year):
+    def extract_var(self, var):
         print('Extracting Variable ' + var)
-        with open(file=self.path_BuurtBBGA, mode='r') as Buurt_BBGA:
-            for line in Buurt_BBGA:
-                line_array = [i.strip() for i in line.split(sep=';')]               # strip to get rid of "newline"
-                if line_array[2] == var and int(line_array[0]) == year:
-                    self.df_vars.at[str(line_array[1]), var] = line_array[3]
+        self.neighborhood_se = np.array(self.neighborhood_se)
+        for line in self.neighborhood_se:
+            line_array = [i.strip() for i in line]               # strip to get rid of "newline"
+            if line_array[self.se_var_col_ind] == var:
+                self.geo_data.at[str(line_array[self.geo_col_ind]), var] = line_array[self.se_col_ind]
+
 
     # filter by population density
-    def filterbuurten(self, min_popdens):
-        if 'Buurten_data' not in globals():
-            self.loadbuurten()
-        del_list = []                                                               # declare filter list
-        for i, Buurten_code in enumerate(self.Buurten_data['Buurt_code']):
-            try:
-                Pop_km2 = float(self.df_vars.at[Buurten_code, 'BEVTOTAAL'], ) / (
-                        self.Buurten_data.at[i, 'Opp_m2'] / 1000000.0)
-                if Pop_km2 <= min_popdens:
-                    del_list.append(Buurten_code)
-            except:
-                del_list.append(Buurten_code)
-        self.df_vars = self.df_vars.drop(index=del_list, axis=0)                    # apply filter
+    def filter_areas(self, min_popdens):
+        print('filter low populated areas')
+        self.geo_data = self.geo_data.replace(r'^\s*$', np.nan, regex=True)
+        self.geo_data = self.geo_data.fillna(value=0.0)
+        self.geo_data = self.geo_data.astype({self.pop_col: int, self.size_col: float})
+        self.geo_data['pop_km2'] = self.geo_data[self.pop_col] / (self.geo_data[self.size_col]/1000000.0)
+        self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
 
 
-    def mergestore(self):
-        print('merging Buurt and BBGA frame')
-        if os.path.isfile(self.path_BuurtBBGA):
-            self.loadbuurten()
-            self.df_vars = self.df_vars.join(self.Buurten_data.set_index('Buurt_code'))
-            print('storing new Buurt BBGA csv')
-            self.df_vars.to_csv(path_or_buf=self.path_BuurtBBGA, index=True, index_label='Buurt_code', sep=';')
-        else:
-            print('ERROR while merging frames')
 
 
 class PassengerCountPrep:
@@ -119,14 +105,14 @@ class PassengerCountPrep:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        self.path_PassCount = os.path.join(self.ROOT_DIR, RawData, self.PassCountfile)
-        self.path_GTFS_Stops = os.path.join(self.ROOT_DIR, RawData, self.GTFS_Stopsfile)
-        self.path_OSMStops = os.path.join(self.ROOT_DIR, RawData, self.OSM_stops)
-        self.path_GVBStop_Locations = os.path.join(self.ROOT_DIR, GeneratedData, self.GVB_stop_locations)
-        self.path_relStop_locations = os.path.join(self.ROOT_DIR, GeneratedData, self.relevant_stop_locations)
-        self.path_relPassCount = os.path.join(self.ROOT_DIR, GeneratedData, self.relevant_PassCount)
-        self.path_BuurtStopsAss = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_Stops_Associations)
-        self.path_Buurtflows = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_flows)
+        self.path_PassCount = os.path.join(self.ROOT_DIR, raw, self.PassCountfile)
+        self.path_GTFS_Stops = os.path.join(self.ROOT_DIR, raw, self.GTFS_Stopsfile)
+        self.path_OSMStops = os.path.join(self.ROOT_DIR, raw, self.OSM_stops)
+        self.path_GVBStop_Locations = os.path.join(self.ROOT_DIR, generated, self.GVB_stop_locations)
+        self.path_relStop_locations = os.path.join(self.ROOT_DIR, generated, self.relevant_stop_locations)
+        self.path_relPassCount = os.path.join(self.ROOT_DIR, generated, self.relevant_PassCount)
+        self.path_BuurtStopsAss = os.path.join(self.ROOT_DIR, generated, self.Buurten_Stops_Associations)
+        self.path_Buurtflows = os.path.join(self.ROOT_DIR, generated, self.Buurten_flows)
         self.PassCount_data = load(path=self.path_PassCount, sep=';')
 
 
@@ -216,7 +202,7 @@ class PassengerCountPrep:
             file.write(json.dumps(hits))
         """
 
-        with open(os.path.join(self.ROOT_DIR, GeneratedData, 'stop_assignment1.txt')) as assigned_dict:
+        with open(os.path.join(self.ROOT_DIR, generated, 'stop_assignment1.txt')) as assigned_dict:
             assigned_stops = json.load(assigned_dict)
         gtfs_notfound = [str(item) for item in gtfs_notfound if item not in list(assigned_stops.keys())]
 
@@ -252,7 +238,7 @@ class PassengerCountPrep:
             file.write(json.dumps(hits))
         """
 
-        with open(os.path.join(self.ROOT_DIR, GeneratedData, 'stop_assignment2.txt')) as assigned_dict:
+        with open(os.path.join(self.ROOT_DIR, generated, 'stop_assignment2.txt')) as assigned_dict:
             assigned_stops = {**assigned_stops, **json.load(assigned_dict)}
 
         GTFSStop_dict = {}
@@ -453,13 +439,13 @@ class transportPrep:
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
-        self.path_PC6Info = os.path.join(self.ROOT_DIR, RawData, self.PC6Info)
-        self.path_BuurtBBGA = os.path.join(self.ROOT_DIR, GeneratedData, BBGA_Buurten)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PC6)
-        self.path_OTPtimes = os.path.join(self.ROOT_DIR, RawData, self.OTP_times)
-        self.path_OTPtimes_old = os.path.join(self.ROOT_DIR, RawData, self.OTP_times_old)
-        self.path_BuurtPTtimes = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PT_times)
-        self.path_Buurtbiketimes = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_bike_times)
+        self.path_PC6Info = os.path.join(self.ROOT_DIR, raw, self.PC6Info)
+        self.path_BuurtBBGA = os.path.join(self.ROOT_DIR, generated, BBGA_Buurten)
+        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
+        self.path_OTPtimes = os.path.join(self.ROOT_DIR, raw, self.OTP_times)
+        self.path_OTPtimes_old = os.path.join(self.ROOT_DIR, raw, self.OTP_times_old)
+        self.path_BuurtPTtimes = os.path.join(self.ROOT_DIR, generated, self.Buurten_PT_times)
+        self.path_Buurtbiketimes = os.path.join(self.ROOT_DIR, generated, self.Buurten_bike_times)
         self.BBGA_Buurt_data = pd.read_csv(filepath_or_buffer=self.path_BuurtBBGA, sep=';', index_col='Buurt_code')
         self.fair = fair
 
@@ -516,12 +502,12 @@ class transportPrep:
 
 
     def prepareTransport_times(self):
-        Buurten_times = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'Buurten_noParks.p'), "rb"))
+        Buurten_times = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
         BuurtBBGA = set(self.BBGA_Buurt_data.index)
         BuurtDiff = [i for i, item in enumerate(Buurten_times) if item not in BuurtBBGA]
 
-        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData,'minadvice_PT.p'), "rb"))
-        bike_times = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'bike_time_in_seconds.p'), "rb"))
+        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
+        bike_times = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'bike_time_in_seconds.p'), "rb"))
 
         matrix_9292 = self.Build_Matrix(length=len(Buurten_times), data_list=minadvice_9292)
         matrix_bike = self.Build_Matrix(length=len(Buurten_times), data_list=bike_times)
@@ -548,11 +534,11 @@ class transportPrep:
     def compare9292(self):
         self.loadOTPtimes()
 
-        Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData, 'Buurten_noParks.p'), "rb"))
+        Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
         BuurtBBGA = set(self.BBGA_Buurt_data.index)  # convert to set for fast lookups
         BuurtDiff = [i for i, item in enumerate(Buurts_9292) if item not in BuurtBBGA]
 
-        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, GeneratedData,'minadvice_PT.p'), "rb"))
+        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
 
         OTP_times = np.array(self.OTP_times_data['DURATION'])
         """
@@ -584,10 +570,10 @@ class transportPrep:
         self.BBGA_Buurt_data['clust_OTP'] = Analysis().Clustering(matrix=matrix_OTP,
                                                                    Buurten=np.array(self.BBGA_Buurt_data.index))
 
-        self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'),
+        self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
                                     index=True, index_label='Buurt_code', sep=';')
 
-        clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, GeneratedData, 'clust_comp.csv'),
+        clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
                                  sep=';')
         temp = np.array(clust_comp['clust_9292']).argsort()
         ranks_9292 = np.empty_like(temp)

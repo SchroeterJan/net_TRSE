@@ -16,8 +16,8 @@ class OTP_grabber:
 
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PC6)
-        self.path_OTPtimes = os.path.join(self.ROOT_DIR, RawData, self.OTP_times)
+        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
+        self.path_OTPtimes = os.path.join(self.ROOT_DIR, raw, self.OTP_times)
         router_ID = json.loads(rq.get(self.OTP_SERVER_URL + self.META).text)['routerInfo'][0]['routerId']
         print('Router ID: ' + router_ID)
         self.loadBuurtPC6()
@@ -89,8 +89,8 @@ class GH_grabber:
 
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_PC6)
-        self.path_GHtimes = os.path.join(self.ROOT_DIR, RawData, self.GH_times)
+        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
+        self.path_GHtimes = os.path.join(self.ROOT_DIR, raw, self.GH_times)
         print("Graphhopper routing engine version: " + json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_info).text)['version'])
         self.loadBuurtPC6()
 

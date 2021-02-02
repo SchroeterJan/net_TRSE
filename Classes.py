@@ -31,7 +31,7 @@ class DataHandling:
         self.Buurten_data = pd.read_csv(filepath_or_buffer=self.path_Buurten_Data, sep=';')
         self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
         self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
-        self.Flows = pd.read_csv(filepath_or_buffer=self.path_Flows, sep=';')
+        self.Flows = pd.read_csv(filepath_or_buffer=self.path_Flows, sep=';', index_col=0)
 
 
     def Write_data(self, path, data):
