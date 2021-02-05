@@ -1,20 +1,11 @@
-from Processing_class import *
+from processors import *
 from config import *
 from Routing import *
 
 
 
-
-
-
-
-
-# Initiate data preparation class
-se_prep = SE_Neighborhoods(dir_data=dir_data, columns=column_names, min_popdens=popdens)
-
-
 def prepare_se():
-
+    se_prep = SE_Neighborhoods()
     # check if prepared data already exists
     if os.path.isfile(path_neighborhood_se):
         print('removing existing Neighborhood SE Data')
@@ -29,15 +20,30 @@ def prepare_se():
         se_prep.extract_var(var=variable)
 
     # filter low populated areas
-    se_prep.filter_areas(min_popdens=popdens)
+    se_prep.filter_areas()
 
     # write resulting data set to disk
+    print('writing preprocessed data to disk')
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
 
+def prepare_flow():
+    flow_prep = Passenger_Counts()
+    flow_prep.relevantStops()
+    a = 10
 
-prepare_se()
+# Initiate data preparation class
+
+
+# prepare_se()
+prepare_flow()
+
+
+
+
+
+
 
 
 

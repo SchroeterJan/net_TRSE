@@ -1,4 +1,4 @@
-from Processing_class import *
+from processors import *
 import requests as rq
 import json
 import subprocess

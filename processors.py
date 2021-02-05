@@ -1,39 +1,31 @@
-from Classes import *
 from config import *
 import pandas as pd
 import numpy as np
 from haversine import haversine, Unit
-import json
 import pickle
 from scipy.stats import kendalltau
-from shapely.geometry import Point
-import shapely.wkt
-import geopandas
-import itertools
 
 
 
-def load(path, sep, index_col=None):
-    return pd.read_csv(filepath_or_buffer=path, sep=sep, index_col=index_col)
 
 class SE_Neighborhoods:
     # set up DataFrame for socio-economic variables
     neighborhood_se = []
 
     # Initialize class
-    def __init__(self, dir_data, columns, min_popdens):
+    def __init__(self):
         print("Initializing " + self.__class__.__name__)
         self.path_se = os.path.join(dir_data, file_se)
         self.path_geo = os.path.join(dir_data, file_geo)
 
 
-        self.geo_id_col = columns['geo_id_col']
-        self.pop_col = columns['pop_col']
-        self.size_col = columns['size_col']
-        self.geo_col_se = columns['geo_id_se']
-        self.year_col = columns['year_col']
-        self.se_var_col = columns['se_var_col']
-        self.se_col = columns['se_col']
+        self.geo_id_col = column_names['geo_id_col']
+        self.pop_col = column_names['pop_col']
+        self.size_col = column_names['size_col']
+        self.geo_col_se = column_names['geo_id_se']
+        self.year_col = column_names['year_col']
+        self.se_var_col = column_names['se_var_col']
+        self.se_col = column_names['se_col']
 
         # load geographic data set if found
         if os.path.isfile(self.path_geo):
@@ -78,7 +70,7 @@ class SE_Neighborhoods:
 
 
     # filter by population density
-    def filter_areas(self, min_popdens):
+    def filter_areas(self):
         print('filter low populated areas')
         self.geo_data = self.geo_data.replace(r'^\s*$', np.nan, regex=True)
         self.geo_data = self.geo_data.fillna(value=0.0)
@@ -87,207 +79,43 @@ class SE_Neighborhoods:
         self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
 
 
+class Passenger_Counts:
 
 
-class PassengerCountPrep:
-    # Find root direction
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PassCountfile = 'HBReizen_Schroter.csv'
-    GTFS_Stopsfile = 'stops_amsterdam.txt'
-    OSM_stops = 'OSM_PT_stations_ams.csv'
-    GVB_stop_locations = 'GVB_Stop_Locations.csv'
-    relevant_stop_locations = 'relevant_stop_Locations.csv'
-    relevant_PassCount = 'relevant_PassCount.csv'
-    Buurten_Stops_Associations = 'Buurten_Stops_associations.csv'
-    Buurten_flows = 'Buurten_flows.csv'
-
-
+    # relevant_stop_locations = 'relevant_stop_Locations.csv'
+    # relevant_PassCount = 'relevant_PassCount.csv'
+    # Buurten_Stops_Associations = 'Buurten_Stops_associations.csv'
+    # Buurten_flows = 'Buurten_flows.csv'
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        self.path_PassCount = os.path.join(self.ROOT_DIR, raw, self.PassCountfile)
-        self.path_GTFS_Stops = os.path.join(self.ROOT_DIR, raw, self.GTFS_Stopsfile)
-        self.path_OSMStops = os.path.join(self.ROOT_DIR, raw, self.OSM_stops)
-        self.path_GVBStop_Locations = os.path.join(self.ROOT_DIR, generated, self.GVB_stop_locations)
-        self.path_relStop_locations = os.path.join(self.ROOT_DIR, generated, self.relevant_stop_locations)
-        self.path_relPassCount = os.path.join(self.ROOT_DIR, generated, self.relevant_PassCount)
-        self.path_BuurtStopsAss = os.path.join(self.ROOT_DIR, generated, self.Buurten_Stops_Associations)
-        self.path_Buurtflows = os.path.join(self.ROOT_DIR, generated, self.Buurten_flows)
-        self.PassCount_data = load(path=self.path_PassCount, sep=';')
+        path_passcount = os.path.join(dir_data, file_passcount)
+        path_stops = os.path.join(dir_data, file_stops)
+
+        if os.path.isfile(path_passcount):
+            print('Loading Flow Data')
+            self.pass_data = pd.read_csv(filepath_or_buffer=path_passcount, sep=';')
+        else:
+            print('ERROR - No passenger count data found in path: ' + path_passcount)
+
+        if os.path.isfile(path_stops):
+            print('Loading Stop Information')
+            self.path_stops = path_stops
+            self.stops = pd.read_csv(filepath_or_buffer=path_stops, sep=';')
+        else:
+            print('ERROR - No stop location data found in path: ' + path_stops)
+            self.stops = pd.DataFrame()                                                 #option to populate stops
 
 
-    def loadStopData(self):
-
-        # Read OSM Stop location extract from OpenStreetMaps
-        self.OSMStops_data = pd.read_csv(filepath_or_buffer=self.path_OSMStops, sep=';')
-        if os.path.isfile(self.path_GVBStop_Locations):
-            self.GVBStop_locations = pd.read_csv(filepath_or_buffer=self.path_GVBStop_Locations, sep=';')
-        if os.path.isfile(self.path_relStop_locations):
-            self.relevantStop_locations = pd.read_csv(filepath_or_buffer=self.path_relStop_locations, sep=';')
-
-
-    def checkStopLocations_old(self):
-        self.loadStopData()
-        self.GTFSStops_data['stop_name'] = self.GTFSStops_data['stop_name'].str.split(', ').str[1]
-        GTFSStop_names = set(self.GTFSStops_data['stop_name'])
-        OSMStop_names = self.OSMStops_data['name'].astype(str)
-        OSMStop_names2 = self.OSMStops_data['name'].str.split(', ').str[1]
-        OSMstop_nan = np.array(OSMStop_names2.isna())
-
-        for i, each in enumerate(OSMstop_nan):
-            if each == False:
-                OSMStop_names.at[i] = OSMStop_names2.at[i]
-
-        OSMStop_names = np.unique(OSMStop_names).astype(str)
-        GVBStop_names = np.unique(np.array(self.PassCount_data['Halte_(vertrek)'])).astype(str)
-        gtfsgood = []
-        gtfsbad = []
-        for each in GVBStop_names:
-            if each in set(GTFSStop_names):
-                gtfsgood.append(each)
-            else:
-                gtfsbad.append(each)
-        OSMgood = []
-        OSMbad = []
-        for each in GVBStop_names:
-            if each in set(OSMStop_names):
-                OSMgood.append(each)
-            else:
-                OSMbad.append(each)
-
-    def assignStopLocations(self):
-        # Read GTFS Stop data (source: https://transitfeeds.com/)
-        self.GTFSStops_data = load(path=self.path_GTFS_Stops, sep=',')
-
-        self.GTFSStops_data['stop_name'] = self.GTFSStops_data['stop_name'].str.split(', ').str[1]
-
-        GTFSStop_names = set(self.GTFSStops_data['stop_name'])
-
-        GVBStops_origin = np.unique(np.array(self.PassCount_data['Halte_(vertrek)'])).astype(str)
-        GVBStops_dest = np.unique(np.array(self.PassCount_data['Halte_(aankomst)'])).astype(str)
-        GVBStops = np.unique(list(GVBStops_dest) + list(GVBStops_origin))
-
-        gtfs_found = []
-        gtfs_notfound = []
-        for each in GVBStops:
-            if each in set(GTFSStop_names):
-                gtfs_found.append(each)
-            else:
-                gtfs_notfound.append(each)
-
-        """
-        hits = {}
-
-        for unfound in gtfs_notfound:
-            try:
-                parts = unfound.split(' ')
-            except:
-                print(unfound)
-            leftover = []
-            for possible_hit in list(GTFSStop_names):
-                for part in parts:
-                    if np.char.find(str(possible_hit), part, start=0, end=None) != -1:
-                        leftover.append(possible_hit)
-
-            print('For \"' + unfound + '\" the folling possible hits were found: \n')
-            for i, item in enumerate(leftover):
-                print(str(i) + '. ' + item + '\n')
-            choice = input('Choose the best fit via index. Type \" None \" to discard the Stop or \" further \n.')
-            if choice == 'None':
-                continue
-            else:
-                hits[unfound] = leftover[int(choice)]
-
-        with open('Generated_data/stop_assignment1.txt', 'w') as file:
-            file.write(json.dumps(hits))
-        """
-
-        with open(os.path.join(self.ROOT_DIR, generated, 'stop_assignment1.txt')) as assigned_dict:
-            assigned_stops = json.load(assigned_dict)
-        gtfs_notfound = [str(item) for item in gtfs_notfound if item not in list(assigned_stops.keys())]
-
-        """
-        hits = {}
-        for unfound in gtfs_notfound:
-            try:
-                parts = unfound.split(' ')
-                print('current parts are: \n')
-                for each in parts:
-                    print(each)
-                additional = input('add an educated guess')
-                if len(additional) > 0:
-                    parts.append(additional)
-            except:
-                print(unfound)
-            leftover = []
-            for possible_hit in list(GTFSStop_names):
-                for part in parts:
-                    if np.char.find(str(possible_hit), part, start=0, end=None) != -1:
-                        leftover.append(str(possible_hit))
-
-            print('For \"' + unfound + '\" the folling possible hits were found: \n')
-            for i, item in enumerate(leftover):
-                print(str(i) + '. ' + item + '\n')
-            choice = input('Choose the best fit via index. Type \" None \" to discard the Stop or \" further \n.')
-            if choice == 'None':
-                continue
-            else:
-                hits[unfound] = leftover[int(choice)]
-
-        with open('Generated_data/stop_assignment2.txt', 'w') as file:
-            file.write(json.dumps(hits))
-        """
-
-        with open(os.path.join(self.ROOT_DIR, generated, 'stop_assignment2.txt')) as assigned_dict:
-            assigned_stops = {**assigned_stops, **json.load(assigned_dict)}
-
-        GTFSStop_dict = {}
-        for each in np.array(self.GTFSStops_data):
-            GTFSStop_dict[each[2]] = [each[3], each[4]]
-        GVBStop_locations = pd.DataFrame(columns=['Stop_name', 'LAT', 'LNG'])
-        GVBStop_locations['Stop_name'] = pd.Series(GVBStops)
-
-        for i, Stop in enumerate(GVBStops):
-            if Stop in assigned_stops:
-                Stop = assigned_stops[Stop]
-            if Stop in GTFSStop_names:
-                GVBStop_locations.iloc[i][1] = GTFSStop_dict[Stop][0]
-                GVBStop_locations.iloc[i][2] = GTFSStop_dict[Stop][1]
-            else:
-                GVBStop_locations.iloc[i][1] = input('give LAT for' + Stop)
-                GVBStop_locations.iloc[i][2] = input('give LNG for' + Stop)
-        # GVBStop_locations.to_csv(path_or_buf=self.path_GVBStop_Locations, index=True, index_label='Buurt_code', sep=';')
-
-
-    def relevantStops(self, proximity_measure, range_factor):
-        self.GVBStop_locations = load(path=self.path_GVBStop_Locations, sep=';')
-
-        # Declare actual Train Stations allowing to switch to regional transport (source:
-        # https://en.wikipedia.org/wiki/List_of_railway_stations_in_Amsterdam)
-        NS_stops = {'Centraal Station',
-                    'Station Sloterdijk',
-                    'Station Lelylaan',
-                    'Station Zuid',
-                    'Station RAI',
-                    'Muiderpoortstation',
-                    'Amstelstation',
-                    'Station Bijlmer ArenA',
-                    'Station Science Park',
-                    'Station Holendrecht',
-                    'Station Duivendrecht'
-                    }
-
-        BuurtBBGA = transportPrep()
-        BuurtBBGA.loadBuurtBBGA()
-
+    def relevantStops(self):
         # Drop Stops without assigned location
-        self.GVBStop_locations = self.GVBStop_locations.mask(self.GVBStop_locations.eq('None')).dropna()
-        self.GVBStop_locations = self.GVBStop_locations.reset_index(drop=True)
+        self.stops = self.stops.mask(self.stops.eq('None')).dropna()
+        self.stops = self.stops.reset_index(drop=True)
 
         # Form shapely Points for all Stops
         GVB_Stop_Points = [Point(float(lng), float(lat)) for lng, lat in zip(
-            self.GVBStop_locations['LNG'],
-            self.GVBStop_locations['LAT'])]
+            self.stops['LNG'],
+            self.stops['LAT'])]
         GVB_Stop_Points = geopandas.GeoSeries(GVB_Stop_Points)
 
         # Form shapely Polygons of all Buurten
@@ -299,16 +127,14 @@ class PassengerCountPrep:
         Stops_Buurten_distance_matrix = GVB_Stop_Points.apply(lambda Stop: Buurt_Polygons.distance(Stop))
         Short_Distances, a = np.where(Stops_Buurten_distance_matrix <= proximity_measure)
         relevant_Stops = np.unique(Short_Distances)
-        self.GVBStop_locations = self.GVBStop_locations.iloc[relevant_Stops]
-
+        self.stops = self.stops.iloc[relevant_Stops]
 
         # Exclude stops with connections to regional trains
-        for NS_stop in NS_stops:
-            self.GVBStop_locations = self.GVBStop_locations[self.GVBStop_locations.Stop_name != NS_stop]
-
+        for NS_stop in exclude_stops:
+            self.stops = self.stops[self.stops.Stop_name != NS_stop]
 
         # shrink distance matrix to relevant Stops and Transpose to be Buurt-focussed
-        Stops_Buurten_distance_matrix = Stops_Buurten_distance_matrix.iloc[np.array(self.GVBStop_locations.index)]
+        Stops_Buurten_distance_matrix = Stops_Buurten_distance_matrix.iloc[np.array(self.stops.index)]
         Stops_Buurten_distance_matrix = np.array(Stops_Buurten_distance_matrix).T
 
         # run Buurt-Stop-Assignment scheme
@@ -328,11 +154,10 @@ class PassengerCountPrep:
         Stops_Buurten_distance_matrix[np.where(Stops_Buurten_distance_matrix != True)] = False
         Stops_Buurten_distance_matrix = pd.DataFrame(Stops_Buurten_distance_matrix,
                                                      index=BuurtBBGA.BBGA_Buurt_data.index,
-                                                     columns=self.GVBStop_locations.Stop_name)
+                                                     columns=self.stops.Stop_name)
 
         Stops_Buurten_distance_matrix.to_csv(path_or_buf=self.path_BuurtStopsAss, sep=';')
-        self.GVBStop_locations.to_csv(path_or_buf=self.path_relStop_locations, sep=';')
-
+        self.stops.to_csv(path_or_buf=self.path_relStop_locations, sep=';')
 
     def filterPassCount(self):
         self.relevantStop_locations = load(path=self.path_relStop_locations, sep=';')
@@ -383,48 +208,15 @@ class PassengerCountPrep:
                                                                  for combination in trip_combinations])]
                 # assign equal flow fractions among the potential journeys
                 for combination in trip_combinations:
-                    Buurt_flow_matrix[combination[0], combination[1]] += (flow/len(trip_combinations))
+                    Buurt_flow_matrix[combination[0], combination[1]] += (flow / len(trip_combinations))
 
         Buurt_flow_matrix = pd.DataFrame(Buurt_flow_matrix,
                                          index=self.Buurten_Stops_Association.index,
                                          columns=self.Buurten_Stops_Association.index)
         Buurt_flow_matrix.to_csv(path_or_buf=self.path_Buurtflows, sep=';')
 
-    def checkOneWays(self):
-        self.loadPassCount()
 
-        GVBStops = np.unique(np.array(self.PassCount_data['Halte_(vertrek)']))
-        toolow = np.where(np.array(self.PassCount_data['Totaal_reizen']) == '<50')[0]
-        self.PassCount_data.loc[toolow, 'Totaal_reizen'] = 'nan'
-        self.PassCount_data = self.PassCount_data[self.PassCount_data.Totaal_reizen != 'nan']
-        """
-        plt.xlabel('Passengers on trips', size=20)
-        plt.ylabel('Count', size=20)
-        plt.title('Histogram of Passenger Count', size=20)
-        plt.xticks(size=20)
-        plt.yticks(size=20)
-        plt.hist(x=np.array(self.PassCount_data['Totaal_reizen']),bins=80)
-        plt.xscale('log')
-        plt.tight_layout()
-        plt.show()
-"""
-        self.PassCount_data['Totaal_reizen'] = self.PassCount_data['Totaal_reizen'].astype(int)
-        sum_pass = sum(list(self.PassCount_data['Totaal_reizen']))
-        av =  sum_pass / len(list(self.PassCount_data['Totaal_reizen']))
-        self.PassCount_data = self.PassCount_data.set_index('Halte_(vertrek)')
-        self.PassCount_data = self.PassCount_data.sort_index()
-        self.PassCount_data['no'] = np.arange(len(self.PassCount_data))
-        self.PassCount_data['one_way'] = np.nan
 
-        for origin, row in self.PassCount_data.iterrows():
-            destination = row['Halte_(aankomst)']
-            there = row['Totaal_reizen']
-            try:
-                new_df = self.PassCount_data.loc[destination]
-                back = int(new_df.loc[new_df['Halte_(aankomst)'] == origin]['Totaal_reizen'])
-                self.PassCount_data.iat[row['no'], 3] = there - back
-            except:
-                self.PassCount_data.iat[row['no'], 3] = there
 
 
 class transportPrep:
