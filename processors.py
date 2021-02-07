@@ -4,7 +4,10 @@ import numpy as np
 from haversine import haversine, Unit
 import pickle
 from scipy.stats import kendalltau
-
+import geopandas
+from shapely.geometry import Point
+import shapely.wkt
+import itertools
 
 
 
@@ -59,7 +62,7 @@ class SE_Neighborhoods:
             print('ERROR - No socio-economic data found at: ' + self.path_se)
 
 
-    # extract variables of interest from Buurten BBGA
+    # extract variables of interest from socio-economic data set
     def extract_var(self, var):
         print('Extracting Variable ' + var)
         self.neighborhood_se = np.array(self.neighborhood_se)
@@ -81,12 +84,6 @@ class SE_Neighborhoods:
 
 class Passenger_Counts:
 
-
-    # relevant_stop_locations = 'relevant_stop_Locations.csv'
-    # relevant_PassCount = 'relevant_PassCount.csv'
-    # Buurten_Stops_Associations = 'Buurten_Stops_associations.csv'
-    # Buurten_flows = 'Buurten_flows.csv'
-
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         path_passcount = os.path.join(dir_data, file_passcount)
@@ -106,101 +103,113 @@ class Passenger_Counts:
             print('ERROR - No stop location data found in path: ' + path_stops)
             self.stops = pd.DataFrame()                                                 #option to populate stops
 
+        if os.path.isfile(path_neighborhood_se):
+            print('Loading neighborhood data')
+            self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';')
+        else:
+            print('ERROR - No neighborhood data found in path: ' + path_neighborhood_se)
 
-    def relevantStops(self):
-        # Drop Stops without assigned location
+        header = open(file=path_passcount, mode='r').readline()
+        header = np.array([i.strip() for i in header.split(sep=';')])
+        self.or_ind = np.where(header == column_names['pass_or'])[0][0]
+        self.dest_ind = np.where(header == column_names['pass_dest'])[0][0]
+        self.flow_ind = np.where(header == column_names['pass_vol'])[0][0]
+
+
+    def area_stop_matching(self):
+        print('Matching areas and stops according to proximity conditions')
+        # drop Stops without assigned location
         self.stops = self.stops.mask(self.stops.eq('None')).dropna()
         self.stops = self.stops.reset_index(drop=True)
 
-        # Form shapely Points for all Stops
-        GVB_Stop_Points = [Point(float(lng), float(lat)) for lng, lat in zip(
-            self.stops['LNG'],
-            self.stops['LAT'])]
-        GVB_Stop_Points = geopandas.GeoSeries(GVB_Stop_Points)
+        # form shapely Points for all Stops
+        stop_points = [Point(float(lng), float(lat)) for lng, lat in zip(
+            self.stops[column_names['stop_lng']],
+            self.stops[column_names['stop_lat']])]
+        stop_points = geopandas.GeoSeries(stop_points)
 
-        # Form shapely Polygons of all Buurten
-        Buurt_Polygons = [shapely.wkt.loads(Buurt_Polygon) for Buurt_Polygon
-                          in BuurtBBGA.BBGA_Buurt_data['WKT_LNG_LAT']]
-        Buurt_Polygons = geopandas.GeoSeries(Buurt_Polygons)
+        # form shapely Polygons of all areas
+        area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
+                         in self.neighborhood_se[column_names['area_polygon']]]
+        area_polygons = geopandas.GeoSeries(area_polygons)
 
-        # Distance Matrix of all Stops (Points) and Buurten (Polygons)
-        Stops_Buurten_distance_matrix = GVB_Stop_Points.apply(lambda Stop: Buurt_Polygons.distance(Stop))
-        Short_Distances, a = np.where(Stops_Buurten_distance_matrix <= proximity_measure)
-        relevant_Stops = np.unique(Short_Distances)
-        self.stops = self.stops.iloc[relevant_Stops]
+        # distance Matrix of all stops (Points) and areas (Polygons)
+        stops_area_distance_matrix = stop_points.apply(lambda stop: area_polygons.distance(stop))
 
-        # Exclude stops with connections to regional trains
-        for NS_stop in exclude_stops:
-            self.stops = self.stops[self.stops.Stop_name != NS_stop]
+        # extract stops inside or proximate to relevant areas
+        short_distance, a = np.where(stops_area_distance_matrix <= proximity)
+        relevant_stops = np.unique(short_distance)
+        self.stops = self.stops.iloc[relevant_stops]
 
-        # shrink distance matrix to relevant Stops and Transpose to be Buurt-focussed
-        Stops_Buurten_distance_matrix = Stops_Buurten_distance_matrix.iloc[np.array(self.stops.index)]
-        Stops_Buurten_distance_matrix = np.array(Stops_Buurten_distance_matrix).T
+        # exclude stops marked to be excluded
+        for exclude in exclude_stops:
+            self.stops = self.stops[self.stops[column_names['stop_name']] != exclude]
 
-        # run Buurt-Stop-Assignment scheme
-        for i, Buurt_Stop_Distances in enumerate(Stops_Buurten_distance_matrix):
-            # check for stops in proximity and within the Buurt
-            Stops = np.where(Buurt_Stop_Distances <= proximity_measure)[0].tolist()
-            # else check for closest Stop and except all Stops up to 10% further than this
-            if len(Stops) == 0:
-                mindist = np.min(Buurt_Stop_Distances[np.nonzero(Buurt_Stop_Distances)])
+        # shrink distance matrix to relevant stops and transpose to be area-focussed
+        stops_area_distance_matrix = stops_area_distance_matrix.iloc[np.array(self.stops.index)]
+        stops_area_distance_matrix = np.array(stops_area_distance_matrix).T
+
+        # run area-stop assignment-scheme
+        for i, area_stop_distance in enumerate(stops_area_distance_matrix):
+            # check for stops in or proximate to area
+            proxi_stops = np.where(area_stop_distance <= proximity)[0].tolist()
+            # else check for closest stop and except all stops up to a certain range further than this
+            if len(proxi_stops) == 0:
+                mindist = np.min(area_stop_distance[np.nonzero(area_stop_distance)])
                 extra_mile = mindist * (1.0 + range_factor)
-                Stops = np.where(Buurt_Stop_Distances <= extra_mile)[0].tolist()
+                proxi_stops = np.where(area_stop_distance <= extra_mile)[0].tolist()
             # marking assigned stops
-            Buurt_Stop_Distances[Stops] = True
-            Stops_Buurten_distance_matrix[i] = Buurt_Stop_Distances
+            area_stop_distance[proxi_stops] = True
+            stops_area_distance_matrix[i] = area_stop_distance
 
         # bool all non assigned stops
-        Stops_Buurten_distance_matrix[np.where(Stops_Buurten_distance_matrix != True)] = False
-        Stops_Buurten_distance_matrix = pd.DataFrame(Stops_Buurten_distance_matrix,
-                                                     index=BuurtBBGA.BBGA_Buurt_data.index,
-                                                     columns=self.stops.Stop_name)
+        stops_area_distance_matrix[np.where(stops_area_distance_matrix != True)] = False
+        self.stop_area_association = pd.DataFrame(stops_area_distance_matrix,
+                                                  index=self.neighborhood_se[column_names['geo_id_col']],
+                                                  columns=self.stops[column_names['stop_name']])
 
-        Stops_Buurten_distance_matrix.to_csv(path_or_buf=self.path_BuurtStopsAss, sep=';')
-        self.stops.to_csv(path_or_buf=self.path_relStop_locations, sep=';')
-
-    def filterPassCount(self):
-        self.relevantStop_locations = load(path=self.path_relStop_locations, sep=';')
-
-        # drop Counts column to check the connections
-        connections = self.PassCount_data.drop(labels='Totaal_reizen', axis='columns')
+    def filter_passcount(self):
+        print('Filter irrelevant connections')
+        # set up pure route frame
+        connections = pd.DataFrame(data={'or': self.pass_data[column_names['pass_or']],
+                                         'dest': self.pass_data[column_names['pass_dest']]})
         # set of relevant Stops
-        Stops = set(self.relevantStop_locations['Stop_name'])
+        stops = set(self.stops[column_names['stop_name']])
         # check if connections contain relevant stops
-        rel_connections = connections.isin(Stops)
+        rel_connections = connections.isin(stops)
         # keep only connections between relevant stops
         rel_connections = rel_connections.all(axis=1)
         # keep only passenger counts for those connections
-        self.PassCount_data = self.PassCount_data.loc[rel_connections.values]
-        self.PassCount_data.to_csv(path_or_buf=self.path_relPassCount, sep=';')
+        self.pass_data = self.pass_data.loc[rel_connections.values]
 
-    def assignPassCounts(self):
-        self.relevant_PassCount_data = load(path=self.path_relPassCount, sep=';')
-        self.Buurten_Stops_Association = load(path=self.path_BuurtStopsAss, sep=';', index_col=0)
-        self.relevant_Locations = load(path=self.path_relStop_locations, sep=';')
-
+    def assign_passcounts(self):
+        print('Form flows between areas')
         # set up flow matrix
-        flow_matrix = pd.DataFrame(index=self.relevant_Locations.Stop_name, columns=self.relevant_Locations.Stop_name)
+        stops_map = {stop: index for index, stop in enumerate(list(self.stops[column_names['stop_name']]))}
+        flow_matrix = np.zeros(shape=[len(self.stops[column_names['stop_name']]),
+                                      len(self.stops[column_names['stop_name']])])
 
         # fill flow matrix
-        for flow in np.array(self.relevant_PassCount_data):
-            flow_matrix.at[flow[1], flow[2]] = flow[3]
+        for route in np.array(self.pass_data):
+            flow = route[self.flow_ind]
+            or_ = route[self.or_ind]
+            dest_ = route[self.dest_ind]
+            try:
+                flow = int(flow)
+                flow_matrix[stops_map[or_]][stops_map[dest_]] = flow
+            except:
+                continue
 
-        # discard all flows below 50
-        flow_matrix = flow_matrix.where(flow_matrix != '<50', other=np.nan)
-        flow_matrix = flow_matrix.fillna(value=0.0)
-        flow_matrix = flow_matrix.astype(float)
-
-        # set up Buurt flow matrix
-        Buurt_flow_matrix = np.zeros((len(self.Buurten_Stops_Association.index),
-                                      len(self.Buurten_Stops_Association.index)))
+        # set up area flow matrix
+        area_flow_matrix = np.zeros((len(self.stop_area_association.index),
+                                      len(self.stop_area_association.index)))
         # flow assignment scheme
-        for origin, flow_row in enumerate(flow_matrix.to_numpy()):
-            # get associated stops for the origin Buurt
-            or_associations = np.where(self.Buurten_Stops_Association.to_numpy()[:, origin] == 1.0)[0]
+        for origin, flow_row in enumerate(flow_matrix):
+            # get associated stops for the origin area
+            or_associations = np.where(self.stop_area_association.to_numpy()[:, origin] == 1.0)[0]
             for destination, flow in enumerate(flow_row):
-                # get associated stops for the destination Buurt
-                dest_associations = np.where(self.Buurten_Stops_Association.to_numpy()[:, destination] == 1.0)[0]
+                # get associated stops for the destination area
+                dest_associations = np.where(self.stop_area_association.to_numpy()[:, destination] == 1.0)[0]
                 # combile possible trip combinations between potential origins and potential destinations
                 trip_combinations = np.array(list(itertools.product(or_associations, dest_associations)))
                 # avoid self loops
@@ -208,12 +217,12 @@ class Passenger_Counts:
                                                                  for combination in trip_combinations])]
                 # assign equal flow fractions among the potential journeys
                 for combination in trip_combinations:
-                    Buurt_flow_matrix[combination[0], combination[1]] += (flow / len(trip_combinations))
+                    area_flow_matrix[combination[0], combination[1]] += (flow / len(trip_combinations))
 
-        Buurt_flow_matrix = pd.DataFrame(Buurt_flow_matrix,
-                                         index=self.Buurten_Stops_Association.index,
-                                         columns=self.Buurten_Stops_Association.index)
-        Buurt_flow_matrix.to_csv(path_or_buf=self.path_Buurtflows, sep=';')
+        return(pd.DataFrame(area_flow_matrix,
+                            index=self.stop_area_association.index,
+                            columns=self.stop_area_association.index))
+
 
 
 

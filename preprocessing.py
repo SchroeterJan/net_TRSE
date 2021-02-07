@@ -3,7 +3,6 @@ from config import *
 from Routing import *
 
 
-
 def prepare_se():
     se_prep = SE_Neighborhoods()
     # check if prepared data already exists
@@ -27,13 +26,13 @@ def prepare_se():
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
-
 def prepare_flow():
     flow_prep = Passenger_Counts()
-    flow_prep.relevantStops()
-    a = 10
-
-# Initiate data preparation class
+    flow_prep.area_stop_matching()
+    flow_prep.filter_passcount()
+    area_flow_matrix = flow_prep.assign_passcounts()
+    print('Writing flow matrix to disk')
+    area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
 # prepare_se()
