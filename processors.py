@@ -1,14 +1,4 @@
 from config import *
-import pandas as pd
-import numpy as np
-from haversine import haversine, Unit
-import pickle
-from scipy.stats import kendalltau
-import geopandas
-from shapely.geometry import Point
-import shapely.wkt
-import itertools
-
 
 
 class SE_Neighborhoods:

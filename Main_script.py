@@ -1,47 +1,27 @@
 from Classes import *
-
-"""
-### Variables relating to the nodes
-node_vectors = {'bike_clust' :'bike_network_cluster_values',
-                'bike_clust_max':'bike_network_cluster_values_max30',
-                'PT_clust': 'PT_network_cluster_values',
-                'PT_clust_max': 'PT_network_cluster_values_max45',
-                'car_clust': 'car_network_cluster_values',
-                'car_clust_max': 'car_network_cluster_values_max30',
-                'bike_speed_clust': 'bike_speed_cluster_values',
-                'euclid_clust': 'euclid_network_cluster_values',
-                'Edu_low': 'BEVOPLLAAG_P_2017',
-                'Edu_mid': 'BEVOPLMID_P_2017',
-                'Edu_high': 'BEVOPLHOOG_P_2017',
-                'Pop': 'BEVTOTAAL_2017',
-                'SES': 'SKSES_GEM_2017',
-                'Income': 'IHHINK_GEM_2017',
-                'no Job' : 'PREGWERKL_P_2017',
-                'Buurten_size' : 'Buurten_size'
-                }
-
-
-### Variables relating to the edges
-edge_vectors = {'Edu_difference': 'Education_difference',
-                  'euclid': 'euclidean_distance',
-                  'bike_time': 'bike_time_in_seconds',
-                  'car_time': 'car_times_in_second',
-                  'PT_time': 'minadvice_PT',
-                  'bike_speed': 'bike_speed',
-                  'PT_speed': 'PT_speed',
-                  }
-"""
+from config import *
 
 ### Class objects
 handler = DataHandling()
 plotter = Plotting()
 analyzer = Analysis(handler=handler)
 
+
+path_gh_com = os.path.join(path_repo, path_generated, "bike_time_in_seconds.p")
+pickle.load(path_gh_com)
+
+a = 10
+
+
+
+
+
+### CLUSTERING
+#
 # PT_cluster = analyzer.Clustering(matrix=np.array(handler.PT_times))
 # Bike_cluster = analyzer.Clustering(matrix=np.array(handler.Bike_times))
-Buurten_cluster = pd.read_csv('Generated_data/Buurten_cluster.csv', sep=';')
+# Buurten_cluster = pd.read_csv('Generated_data/Buurten_cluster.csv', sep=';')
 # Buurten_cluster = Buurten_cluster.replace([0], np.nan)
-
 
 # unused = np.where(handler.Flows.to_numpy() == 0)
 # handler.PT_times = handler.PT_times.to_numpy()
@@ -52,8 +32,8 @@ Buurten_cluster = pd.read_csv('Generated_data/Buurten_cluster.csv', sep=';')
 # Buurten_cluster.to_csv(path_or_buf='Generated_data/Buurten_cluster.csv', sep=';', index=False)
 
 
-Buurt_df = handler.Buurten_data.join(other=Buurten_cluster)
-Buurt_df.to_csv(path_or_buf='Buurten_df.csv', sep=';')
+# Buurt_df = handler.Buurten_data.join(other=Buurten_cluster)
+# Buurt_df.to_csv(path_or_buf='Buurten_df.csv', sep=';')
 
 
 

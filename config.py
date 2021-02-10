@@ -1,4 +1,29 @@
 import os
+import datetime
+import itertools
+
+import pandas as pd
+import numpy as np
+
+from haversine import haversine, Unit
+import geopandas
+from shapely.geometry import Point
+import shapely.wkt
+
+import requests as rq
+import json
+from bs4 import BeautifulSoup
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+import networkx as nx
+from scipy.stats import kendalltau
+
+import pickle
+
+
 
 # declare paths to raw data
 dir_data = r'C:\Users\jan.schroeter\Documents\Uni\Thesis\Data\Raw_Data'
@@ -10,6 +35,8 @@ file_passcount = 'HBReizen_Schroter.csv'
 file_stops = 'stop_locations.csv'
 file_se = 'bbga_latest_and_greatest.csv'
 file_geo = 'GEBIED_BUURTEN.csv'
+file_biketimes = 'GH_bike_times.csv'
+file_PTtimes = 'GH_pt_times.csv'
 
 # path for generated data
 path_generated = 'Generated_data'
@@ -17,6 +44,8 @@ file_neighborhood_se = 'neighborhood_se.csv'
 file_flows = 'neighborhood_flows.csv'
 path_neighborhood_se = os.path.join(path_repo, path_generated, file_neighborhood_se)
 path_flows = os.path.join(path_repo, path_generated, file_flows)
+path_bike = os.path.join(dir_data, file_biketimes)
+path_PT = os.path.join(dir_data, file_PTtimes)
 
 
 

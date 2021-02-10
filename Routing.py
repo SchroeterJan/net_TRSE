@@ -1,7 +1,6 @@
-from processors import *
-import requests as rq
-import json
-import subprocess
+from config import *
+
+
 
 class OTP_grabber:
     # Constants
@@ -16,8 +15,8 @@ class OTP_grabber:
 
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
-        self.path_OTPtimes = os.path.join(self.ROOT_DIR, raw, self.OTP_times)
+        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, path_generated, self.Buurten_PC6)
+        self.path_OTPtimes = os.path.join(self.ROOT_DIR, path_raw, self.OTP_times)
         router_ID = json.loads(rq.get(self.OTP_SERVER_URL + self.META).text)['routerInfo'][0]['routerId']
         print('Router ID: ' + router_ID)
         self.loadBuurtPC6()
@@ -77,59 +76,64 @@ class OTP_grabber:
 
 class GH_grabber:
     # Constants
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    Buurten_PC6 = 'Buurten_PC6.csv'
-    GH_times = 'GH_times.csv'
-
     GH_SERVER_URL = "http://localhost:8989/"
+    GH_PT = 'maps/pt/'
     Endpoint_info = 'info/'
     Endpoint_route = "route/"
 
-
-
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
-        self.path_GHtimes = os.path.join(self.ROOT_DIR, raw, self.GH_times)
         print("Graphhopper routing engine version: " + json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_info).text)['version'])
-        self.loadBuurtPC6()
 
 
+    # def pt_planner(self, driver):
+    #     # print(datetime.datetime.now().isoformat())
+    #     par = {'pt.earliest_departure_time': '2020-12-08T08:00:00Z',
+    #            'pt.arrive_by': 'false',
+    #            'locale': 'en-US',
+    #            'profile': 'pt',
+    #            'pt.profile': 'false',
+    #            'pt.profile_duration': 'PT120M',
+    #            'pt.limit_street_time': 'PT30M',
+    #            'pt.ignore_transfers': 'false',
+    #            'point': ['52.34960205354996,4.893035888671876', '52.3688917060255,4.8903751373291025']
+    #            }
+    #
+    #     url = rq.Request('GET', url=self.GH_SERVER_URL + self.GH_PT, params=par).prepare().url
+    #     driver.get(url)
+    #     soup = BeautifulSoup(driver.page_source)
+    #
+    #     for tag in soup.find_all('div'):
+    #         try:
+    #             tag_class = tag.attrs['class']
+    #         except:
+    #             tag_class = ''
+    #         if tag_class == 'tripDisplay':
+    #             trip_tag = tag
 
-    def loadBuurtPC6(self):
-        self.BuurtPC6 = np.array(pd.read_csv(filepath_or_buffer=self.path_BuurtPC6, sep=';'))
 
+    def bike_planner(self, or_, dest_):
+        par = {'point': [str(or_[1])+ ',' + str(or_[2]), str(dest_[1]) + ',' +str(dest_[2])],
+               'type': 'json',
+               'locale': 'de',
+               'elevation': 'true',
+               'profile': 'bike',
+               }
+        advice = json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_route, params=par).text)['paths'][0]
+        try:
+            # advice_dur_list = []
+            # for each in advices:
+            #    advice_dur_list.append(each['duration'])
+            # best_advice = advices[np.argmin(advice_dur_list)]
+            res = par['point'][0] + ',' + \
+                  par['point'][1] + ',' + \
+                  str(advice['time']) + ',' + \
+                  str(advice['distance']) + ',' + \
+                  str(advice['weight']) + '\n'
+        except:
+            rew = 'None,None,None,None,None,None,None\n'
+        return res
 
-
-    def planner(self):
-        if os.path.isfile(self.path_GHtimes):
-            print('removing existing Graphhopper times')
-            os.remove(self.path_GHtimes)
-        with open(file=self.path_GHtimes, mode='w') as GHtimes:
-            GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')
-            for i, or_row in enumerate(self.BuurtPC6):
-                for j, dest_row in enumerate(self.BuurtPC6[i + 1:]):
-                    par = {'point': [str(or_row[1])+ ',' + str(or_row[2]), str(dest_row[1]) + ',' +str(dest_row[2])],
-                           'type': 'json',
-                           'locale': 'de',
-                           'elevation': 'true',
-                           'profile': 'bike',
-                           }
-                    advice = json.loads(rq.get(self.GH_SERVER_URL + self.Endpoint_route, params=par).text)['paths'][0]
-                    try:
-                        #advice_dur_list = []
-                        #for each in advices:
-                        #    advice_dur_list.append(each['duration'])
-                        #best_advice = advices[np.argmin(advice_dur_list)]
-                        GHtimes.write(par['point'][0]
-                                       + ',' + par['point'][1]
-                                       + ',' + str(advice['time'])
-                                       + ',' + str(advice['distance'])
-                                       + ',' + str(advice['weight'])
-                                       + '\n')
-                    except:
-                        GHtimes.write('None,None,None,None,None,None,None\n')
-                print('Finished row ' + str(i))
 
 
 

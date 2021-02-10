@@ -1,37 +1,26 @@
-import os
-import pandas as pd
-import numpy as np
-import pickle
-import seaborn as sns
-import matplotlib.pyplot as plt
-import networkx as nx
-
+from config import *
 
 
 class DataHandling:
 
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    Buurten_Data_file = 'BBGA_Buurt.csv'
     PT_times_file = 'Buurten_PT_times.csv'
-    Bike_times_file = 'Buurten_bike_times.csv'
-    Flows_file = 'Buurten_flows.csv'
+
 
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        self.path_Buurten_Data = os.path.join(self.ROOT_DIR, GeneratedData, self.Buurten_Data_file)
-        self.path_PT_times = os.path.join(self.ROOT_DIR, GeneratedData, self.PT_times_file)
-        self.path_Bike_times = os.path.join(self.ROOT_DIR, GeneratedData, self.Bike_times_file)
-        self.path_Flows = os.path.join(self.ROOT_DIR, GeneratedData, self.Flows_file)
+        # self.path_PT_times = os.path.join(self.ROOT_DIR, GeneratedData, self.PT_times_file)
+        # self.path_Bike_times = os.path.join(self.ROOT_DIR, GeneratedData, self.Bike_times_file)
         self.Load_Data()
 
 
     def Load_Data(self):
         print("Loading data")
-        self.Buurten_data = pd.read_csv(filepath_or_buffer=self.path_Buurten_Data, sep=';')
-        self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
-        self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
-        self.Flows = pd.read_csv(filepath_or_buffer=self.path_Flows, sep=';', index_col=0)
+        self.Buurten_data = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
+        # self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
+        # self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
+        self.Flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
 
 
     def Write_data(self, path, data):
