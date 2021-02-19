@@ -1,6 +1,5 @@
 from processors import *
 from config import *
-from Routing import *
 
 
 def prepare_se():
@@ -71,38 +70,5 @@ def get_gh_times(path, profile):
 # prepare_se()
 # prepare_flow()
 
-file_PC6 = 'Buurten_PC6.csv'
-path_PC6 = os.path.join(path_repo, path_generated, file_PC6)
-
-
-
-
-
-
-
-### PREPARE TRANSPORT DATA
-#TransPrep = transportPrep()
-#TransPrep.selectPC6()
-#TransPrep.prepareTransport_times()
-
-
-### CHECK 9292 DATA
-#TransPrep.compare9292()
-
-
-### COLLECT JOURNEY TIMES TRHOUGH ROUTING
-#otp_grabber = OTP_grabber()
-#otp_grabber.planner()
-
-#gh_grabber = GH_grabber()
-#gh_grabber.planner()
-
-
-### PREPARE PASSENGER COUNT DATA
-#PrepPassC = PassengerCountPrep()
-#PrepPassC.assignStopLocations()
-#PrepPassC.relevantStops(proximity_measure=proximity, range_factor=range_factor)
-#PrepPassC.filterPassCount()
-#PrepPassC.assignPassCounts()
 
 

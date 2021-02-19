@@ -1,4 +1,5 @@
 from config import *
+from Routing import *
 
 
 class SE_Neighborhoods:
@@ -214,111 +215,21 @@ class Passenger_Counts:
                             columns=self.stop_area_association.index))
 
 
-
-
-
-
 class transportPrep:
-    # Find root direction
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PC6Info = 'PC6_VLAKKEN_BAG.csv'
-    Buurten_PC6 = 'Buurten_PC6.csv'
-    OTP_times = 'OTP_times.csv'
-    OTP_times_old = 'OTP_times_old.csv'
-    Buurten_PT_times = 'Buurten_PT_times.csv'
-    Buurten_bike_times = 'Buurten_bike_times.csv'
+
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
-        self.path_PC6Info = os.path.join(self.ROOT_DIR, raw, self.PC6Info)
-        self.path_BuurtBBGA = os.path.join(self.ROOT_DIR, generated, BBGA_Buurten)
-        self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, generated, self.Buurten_PC6)
-        self.path_OTPtimes = os.path.join(self.ROOT_DIR, raw, self.OTP_times)
-        self.path_OTPtimes_old = os.path.join(self.ROOT_DIR, raw, self.OTP_times_old)
-        self.path_BuurtPTtimes = os.path.join(self.ROOT_DIR, generated, self.Buurten_PT_times)
-        self.path_Buurtbiketimes = os.path.join(self.ROOT_DIR, generated, self.Buurten_bike_times)
-        self.BBGA_Buurt_data = pd.read_csv(filepath_or_buffer=self.path_BuurtBBGA, sep=';', index_col='Buurt_code')
-        self.fair = fair
+        grabber = GH_grabber()
+        bike_data = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, 'GH_bike.csv'))
 
+        if os.path.isfile(path_neighborhood_se):
+            print('Loading neighborhood data')
+            self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';')
+        else:
+            print('ERROR - No neighborhood data found in path: ' + path_neighborhood_se)
 
-
-    def loadOTPtimes(self):
-        self.OTP_times_data = pd.read_csv(filepath_or_buffer=self.path_OTPtimes, sep=',')
-        self.OTP_times_data_old = pd.read_csv(filepath_or_buffer=self.path_OTPtimes, sep=',')
-
-    def selectPC6(self):
-        self.PC6_data = pd.read_csv(filepath_or_buffer=self.path_PC6Info, sep=';')
-        if os.path.isfile(self.path_BuurtPC6):
-            print('removing existing Buurten PC6 Association')
-            os.remove(self.path_BuurtPC6)
-        with open(file=self.path_BuurtPC6, mode='w') as BuurtPC6:
-            BuurtPC6.write('Buurt_code;PC6_LAT;PC6_LNG\n')
-            for Buurt_code, row in self.BBGA_Buurt_data.iterrows():
-                PC6_in_Buurt_ind = np.where(np.array(self.PC6_data['Buurtcode']) == Buurt_code)[0]
-                distance_list = []
-                for ind in PC6_in_Buurt_ind:
-                    PC6_long, PC6_lat = self.PC6_data.at[ind, 'LNG'], self.PC6_data.at[ind, 'LAT']
-                    Buurt_long, Buurt_lat = row['LNG'], row['LAT']
-                    distance_list.append(haversine((Buurt_lat, Buurt_long), (PC6_lat, PC6_long), unit=Unit.KILOMETERS))
-                if not distance_list:
-                    self.BBGA_Buurt_data.at[Buurt_code, 'PC6_lat'] = None
-                    self.BBGA_Buurt_data.at[Buurt_code, 'PC6_lng'] = None
-                elif self.fair==False:
-                    BuurtPC6.write(Buurt_code +';' + str(self.PC6_data.at[
-                        PC6_in_Buurt_ind[distance_list.index(min(distance_list))], 'LAT']) + ';' + str(self.PC6_data.at[
-                        PC6_in_Buurt_ind[distance_list.index(min(distance_list))], 'LNG']) +'\n')
-                    self.BBGA_Buurt_data.at[Buurt_code, 'PC6_lat'] = self.PC6_data.at[
-                        PC6_in_Buurt_ind[distance_list.index(min(distance_list))], 'LAT']
-                    self.BBGA_Buurt_data.at[Buurt_code, 'PC6_lng'] = self.PC6_data.at[
-                        PC6_in_Buurt_ind[distance_list.index(min(distance_list))], 'LNG']
-                else:
-                    # to be implemented, option to collect locations fairly depending on area of Buurt
-                    continue
-
-
-    def Build_Matrix(self, length, data_list):
-        matrix = np.zeros([length, length], dtype=float)
-        k = 0
-        for row in range(length):
-            for col in range(length - row - 1):
-                value= data_list[k]
-                if value == 'None':
-                    value = 0.0
-                matrix[row, col + row + 1] = value
-                matrix[col + row + 1, row] = value
-                k += 1
-
-        matrix[matrix == 0.0] = np.nan
-        return matrix
-
-
-    def prepareTransport_times(self):
-        Buurten_times = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
-        BuurtBBGA = set(self.BBGA_Buurt_data.index)
-        BuurtDiff = [i for i, item in enumerate(Buurten_times) if item not in BuurtBBGA]
-
-        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
-        bike_times = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'bike_time_in_seconds.p'), "rb"))
-
-        matrix_9292 = self.Build_Matrix(length=len(Buurten_times), data_list=minadvice_9292)
-        matrix_bike = self.Build_Matrix(length=len(Buurten_times), data_list=bike_times)
-        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
-        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
-        matrix_bike = np.delete(arr=matrix_bike, obj=BuurtDiff, axis=0)
-        matrix_bike = np.delete(arr=matrix_bike, obj=BuurtDiff, axis=1)
-
-        Buurten_times = np.delete(arr=Buurten_times, obj=BuurtDiff)
-
-        matrix_9292 = pd.DataFrame(matrix_9292, index=pd.Series(Buurten_times), columns=pd.Series(Buurten_times))
-        matrix_bike = pd.DataFrame(matrix_bike, index=pd.Series(Buurten_times), columns=pd.Series(Buurten_times))
-        matrix_9292 = matrix_9292.reindex(index=self.BBGA_Buurt_data.index)
-        matrix_bike = matrix_bike.reindex(index=self.BBGA_Buurt_data.index)
-        matrix_9292 = matrix_9292.reset_index().drop(columns='Buurt_code')
-        matrix_bike = matrix_bike.reset_index().drop(columns='Buurt_code')
-        matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
-        matrix_bike = matrix_bike.reindex(self.BBGA_Buurt_data.index, axis=1)
-        matrix_bike.to_csv(path_or_buf=self.path_Buurtbiketimes, sep=';', index=False)
-        matrix_9292.to_csv(path_or_buf=self.path_BuurtPTtimes, sep=';', index=False)
+        a = 10
 
 
 
@@ -344,9 +255,9 @@ class transportPrep:
                 continue
         """
 
-        matrix_OTP = DataHandling().Build_Matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
+        matrix_OTP = DataHandling().build_matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
                                                  data_list=OTP_times)
-        matrix_9292 = DataHandling().Build_Matrix(length=len(Buurts_9292), data_list=minadvice_9292)
+        matrix_9292 = DataHandling().build_matrix(length=len(Buurts_9292), data_list=minadvice_9292)
         matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
         matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
         Buurts_9292 = np.delete(arr=Buurts_9292, obj=BuurtDiff)

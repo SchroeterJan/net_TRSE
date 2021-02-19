@@ -7,8 +7,9 @@ plotter = Plotting()
 analyzer = Analysis(handler=handler)
 
 
-path_gh_com = os.path.join(path_repo, path_generated, "bike_time_in_seconds.p")
-pickle.load(path_gh_com)
+
+plotter.Hist(series=pd.Series(np.array()))
+
 
 a = 10
 

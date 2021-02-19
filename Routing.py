@@ -1,7 +1,6 @@
 from config import *
 
 
-
 class OTP_grabber:
     # Constants
     ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -16,7 +15,7 @@ class OTP_grabber:
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
         self.path_BuurtPC6 = os.path.join(self.ROOT_DIR, path_generated, self.Buurten_PC6)
-        self.path_OTPtimes = os.path.join(self.ROOT_DIR, path_raw, self.OTP_times)
+        self.path_OTPtimes = os.path.join(self.ROOT_DIR, dir_data, self.OTP_times)
         router_ID = json.loads(rq.get(self.OTP_SERVER_URL + self.META).text)['routerInfo'][0]['routerId']
         print('Router ID: ' + router_ID)
         self.loadBuurtPC6()
@@ -133,9 +132,3 @@ class GH_grabber:
         except:
             rew = 'None,None,None,None,None,None,None\n'
         return res
-
-
-
-
-
-

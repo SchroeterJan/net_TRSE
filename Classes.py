@@ -17,10 +17,15 @@ class DataHandling:
 
     def Load_Data(self):
         print("Loading data")
-        self.Buurten_data = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
+        self.neighborhood_data = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         # self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
         # self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
-        self.Flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
+        self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
+        self.bike_old = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
+                                                                    'Bike_times.csv'), sep=';', index_col=0)
+        self.bike_new = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
+                                                                    'Buurten_bike_times.csv'), sep=';')
+        self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'), sep=';')
 
 
     def Write_data(self, path, data):
@@ -266,7 +271,7 @@ class Analysis:
     def Clustering(self, matrix):
         Graph = nx.Graph()
         matrix = np.nan_to_num(x=matrix, nan=0.0)
-        Buurten = np.array(self.handler.Buurten_data['Buurt_code'])
+        Buurten = np.array(self.handler.neighborhood_data['Buurt_code'])
 
         # create a node for each of these unique locations
         for Buurt in Buurten:
