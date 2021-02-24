@@ -215,13 +215,18 @@ class Passenger_Counts:
                             columns=self.stop_area_association.index))
 
 
-class transportPrep:
+class TransportPrep:
 
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
-        grabber = GH_grabber()
-        bike_data = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, 'GH_bike.csv'))
+        self.locations = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'Buurten_PC6.csv'), sep=';')
+
+        if os.path.isfile(path_bike):
+            print('Loading bike times')
+            self.bike_data = pd.read_csv(filepath_or_buffer=path_bike, sep=',')
+        else:
+            print('ERROR - bike times data found in path: ' + path_bike)
 
         if os.path.isfile(path_neighborhood_se):
             print('Loading neighborhood data')
@@ -229,9 +234,47 @@ class transportPrep:
         else:
             print('ERROR - No neighborhood data found in path: ' + path_neighborhood_se)
 
-        a = 10
+
+    def get_gh_times(self):
+        grabber = GH_grabber()
+        if os.path.isfile(path_bike):
+            print('removing existing Graphhopper times')
+            os.remove(path_bike)
+
+        with open(file=path_bike, mode='w') as GHtimes:
+            GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')
+            for i, or_row in enumerate(self.locations):
+                for j, dest_row in enumerate(self.locations[i + 1:]):
+                    res = grabber.bike_planner(or_=or_row, dest_=dest_row)
+                    GHtimes.write(res)
+
+                print('Finished row ' + str(i))
 
 
+    def build_matrix(self, length, data_list):
+        matrix = np.zeros([length, length], dtype=float)
+        k = 0
+        for row in range(length):
+            for col in range(length - row - 1):
+                value = data_list[k]
+                if value == 'None':
+                    value = 0.0
+                matrix[row, col + row + 1] = value
+                matrix[col + row + 1, row] = value
+                k += 1
+        matrix[matrix == 0.0] = np.nan
+        return matrix
+
+
+    def order_times(self):
+        times_matrix = self.build_matrix(length=len(self.locations.index),
+                                         data_list=list(self.bike_data['DURATION']/1000.0))
+        matrix_bike = pd.DataFrame(times_matrix,
+                                   index=self.locations[column_names['geo_id_col']],
+                                   columns=self.locations[column_names['geo_id_col']])
+        matrix_bike = matrix_bike.reindex(index=self.neighborhood_se[column_names['geo_id_col']])
+        matrix_bike = matrix_bike.reindex(columns=self.neighborhood_se[column_names['geo_id_col']])
+        return matrix_bike
 
     def compare9292(self):
         self.loadOTPtimes()

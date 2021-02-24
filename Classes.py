@@ -10,27 +10,16 @@ class DataHandling:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        # self.path_PT_times = os.path.join(self.ROOT_DIR, GeneratedData, self.PT_times_file)
-        # self.path_Bike_times = os.path.join(self.ROOT_DIR, GeneratedData, self.Bike_times_file)
         self.Load_Data()
 
 
     def Load_Data(self):
         print("Loading data")
-        self.neighborhood_data = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
-        # self.PT_times = pd.read_csv(filepath_or_buffer=self.path_PT_times, sep=';')
-        # self.Bike_times = pd.read_csv(filepath_or_buffer=self.path_Bike_times, sep=';')
+        self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike_old = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
-                                                                    'Bike_times.csv'), sep=';', index_col=0)
-        self.bike_new = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
-                                                                    'Buurten_bike_times.csv'), sep=';')
+        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
+                                                                    'Bike_times_GH.csv'), sep=';', index_col=0)
         self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'), sep=';')
-
-
-    def Write_data(self, path, data):
-        print("Writing data")
-        data.to_csv(path_or_buf=path, sep=';')
 
 
     def Build_speed_vector(self, variable, euclid, name):
@@ -212,11 +201,11 @@ class Plotting:
                     frameon=None, metadata=None)
         plt.show()
 
-    def Hist(self, series, title):
+    def Hist(self, series, title, bins):
         #series = np.where(series == 0.0, np.nan, series)
-        a = sns.histplot(series, x=series, bins=8)
+        a = sns.histplot(series, x=series, bins=bins)
         a.set_title(title)
-        plt.savefig(fname='fig_2.png')
+        plt.savefig(fname=title)
         plt.show()
 
 

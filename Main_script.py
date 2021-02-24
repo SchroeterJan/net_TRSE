@@ -8,7 +8,6 @@ analyzer = Analysis(handler=handler)
 
 
 
-plotter.Hist(series=pd.Series(np.array()))
 
 
 a = 10

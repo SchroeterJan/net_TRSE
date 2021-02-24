@@ -35,8 +35,7 @@ file_passcount = 'HBReizen_Schroter.csv'
 file_stops = 'stop_locations.csv'
 file_se = 'bbga_latest_and_greatest.csv'
 file_geo = 'GEBIED_BUURTEN.csv'
-file_biketimes = 'GH_bike_times.csv'
-file_PTtimes = 'GH_pt_times.csv'
+file_biketimes = 'GH_bike.csv'
 
 # path for generated data
 path_generated = 'Generated_data'
@@ -45,7 +44,6 @@ file_flows = 'neighborhood_flows.csv'
 path_neighborhood_se = os.path.join(path_repo, path_generated, file_neighborhood_se)
 path_flows = os.path.join(path_repo, path_generated, file_flows)
 path_bike = os.path.join(dir_data, file_biketimes)
-path_PT = os.path.join(dir_data, file_PTtimes)
 
 
 

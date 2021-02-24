@@ -2,7 +2,7 @@ from processors import *
 from config import *
 
 
-def prepare_se():
+def areas():
     se_prep = SE_Neighborhoods()
     # check if prepared data already exists
     if os.path.isfile(path_neighborhood_se):
@@ -25,7 +25,7 @@ def prepare_se():
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
-def prepare_flow():
+def flows():
     flow_prep = Passenger_Counts()
     flow_prep.area_stop_matching()
     flow_prep.filter_passcount()
@@ -34,41 +34,19 @@ def prepare_flow():
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
-def get_gh_times(path, profile):
-    grabber = GH_grabber()
-    if os.path.isfile(path):
-        print('removing existing Graphhopper times')
-        os.remove(path)
-    BuurtPC6 = pd.read_csv(filepath_or_buffer=path_PC6, sep=';')
+def bike_times():
+    trans_prep = TransportPrep()
+    if not os.path.isfile(path_bike):
+        print('Gather bike times\n Make sure GH server is running!')
+        trans_prep.get_gh_times()
 
-    if profile == 'PT':
-        options = Options()
-        options.add_argument("--headless")
-        driver = webdriver.Firefox(options=options,
-                                   executable_path=r'C:\Users\jan.schroeter\BrowserDrivers\geckodriver.exe')
-        print("Headless Firefox Initialized")
+    bike_times = trans_prep.order_times()
+    bike_times.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
 
+# areas()
+# flows()
 
-    with open(file=path, mode='w') as GHtimes:
-        GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')
-        for i, or_row in enumerate(BuurtPC6):
-            for j, dest_row in enumerate(BuurtPC6[i + 1:]):
-                if profile == 'bike':
-                    res = grabber.bike_planner(or_=or_row, dest_=dest_row)
-                elif profile == 'PT':
-
-                    res = grabber.pt_planner(driver=driver)
-                else:
-                    print('profile does not exist')
-                GHtimes.write(res)
-
-            print('Finished row ' + str(i))
-
-    if profile == 'PT':
-        driver.close()
-
-# prepare_se()
-# prepare_flow()
+bike_times()
 
 
 
