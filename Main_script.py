@@ -7,33 +7,41 @@ plotter = Plotting()
 analyzer = Analysis(handler=handler)
 
 
-
-
-
-a = 10
-
-
-
+path_clustercoeff = os.path.join(path_repo, path_generated, 'neighborhood_clustercoeff.csv')
 
 
 ### CLUSTERING
-#
-# PT_cluster = analyzer.Clustering(matrix=np.array(handler.PT_times))
-# Bike_cluster = analyzer.Clustering(matrix=np.array(handler.Bike_times))
-# Buurten_cluster = pd.read_csv('Generated_data/Buurten_cluster.csv', sep=';')
-# Buurten_cluster = Buurten_cluster.replace([0], np.nan)
-
-# unused = np.where(handler.Flows.to_numpy() == 0)
-# handler.PT_times = handler.PT_times.to_numpy()
-# for row_ind, column in enumerate(unused[0]):
-#     handler.PT_times[unused[1][row_ind]][column] = 0.0
-# PT_cluster_relevant = analyzer.Clustering(matrix=np.array(handler.PT_times))
-# Buurten_cluster['PT_cluster_relevant'] = PT_cluster_relevant
-# Buurten_cluster.to_csv(path_or_buf='Generated_data/Buurten_cluster.csv', sep=';', index=False)
+def cluster_all():
+    clusters = pd.DataFrame(index=handler.neighborhood_se.index)
+    clusters['pt_all'] = analyzer.Clustering(matrix=handler.pt.to_numpy())
+    clusters['bike_all'] = analyzer.Clustering(matrix=handler.bike.to_numpy())
+    clusters['flows_all'] = analyzer.Clustering(matrix=handler.flows.to_numpy())
+    clusters.to_csv(path_or_buf=path_clustercoeff, sep=';')
 
 
-# Buurt_df = handler.Buurten_data.join(other=Buurten_cluster)
-# Buurt_df.to_csv(path_or_buf='Buurten_df.csv', sep=';')
+def cluster_rel():
+    unused = np.where(np.isnan(handler.flows.to_numpy()))
+    handler.pt = np.array(handler.pt)
+    handler.pt[unused[0], unused[1]] = 0.0
+    handler.bike = np.array(handler.bike)
+    handler.bike[unused[0], unused[1]] = 0.0
+    cluster['pt_rel'] = analyzer.Clustering(matrix=handler.pt)
+    cluster['bike_rel'] = analyzer.Clustering(matrix=handler.bike)
+    cluster.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
+
+
+
+
+if os.path.isfile(path_clustercoeff):
+    cluster = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
+else:
+    cluster_all()
+    cluster_rel()
+
+
+
+
+
 
 
 

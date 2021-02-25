@@ -3,11 +3,6 @@ from config import *
 
 class DataHandling:
 
-    ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-    PT_times_file = 'Buurten_PT_times.csv'
-
-
-
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         self.Load_Data()
@@ -17,9 +12,10 @@ class DataHandling:
         print("Loading data")
         self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,
-                                                                    'Bike_times_GH.csv'), sep=';', index_col=0)
-        self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'), sep=';')
+        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,'Bike_times_GH.csv'),
+                                sep=';', index_col=0)
+        self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'),
+                              sep=';', index_col=0)
 
 
     def Build_speed_vector(self, variable, euclid, name):
@@ -202,7 +198,6 @@ class Plotting:
         plt.show()
 
     def Hist(self, series, title, bins):
-        #series = np.where(series == 0.0, np.nan, series)
         a = sns.histplot(series, x=series, bins=bins)
         a.set_title(title)
         plt.savefig(fname=title)
@@ -240,9 +235,11 @@ class Plotting:
 
 class Analysis:
 
+
     def __init__(self, handler):
         self.handler = handler
         print("Initializing " + self.__class__.__name__)
+
 
     def find_max(self, matrix2, max_extend):
         print("Getting the " + str(max_extend) + " fastest trips")
@@ -257,269 +254,24 @@ class Analysis:
             temp[max_val[0]][max_val[1]] = 0.0
         return np.array(trips), np.array(trips_index)
 
+
     def Clustering(self, matrix):
+        neighborhoods = self.handler.neighborhood_se.index
         Graph = nx.Graph()
         matrix = np.nan_to_num(x=matrix, nan=0.0)
-        Buurten = np.array(self.handler.neighborhood_data['Buurt_code'])
-
         # create a node for each of these unique locations
-        for Buurt in Buurten:
-            Graph.add_node(Buurt)
+        for neighborhood in neighborhoods:
+            Graph.add_node(neighborhood)
 
         # create edges between all nodes and populate them with travel times as weights
         for i, row in enumerate(matrix):
             for j, value in enumerate(row[i:]):
                 if value != 0.0:
-                    Graph.add_edge(Buurten[i],
-                                   Buurten[j + i], weight=value)
-
+                    Graph.add_edge(neighborhoods[i], neighborhoods[j + i], weight=value)
 
         cluster_dict = nx.clustering(Graph, weight='weight')
-        cluster_values = list(cluster_dict.values())
-        cluster_values = np.array(cluster_values)
+        cluster_values = np.array(list(cluster_dict.values()))
         return cluster_values
 
 
 
-
-
-#####Correlation heatmap
-"""
-corrmat = df.corr()
-
-f, ax = plt.subplots(figsize=(9, 8))
-sns.heatmap(corrmat, ax=ax, cmap="YlGnBu", linewidths=0.1)
-plt.show()
-"""
-
-
-"""
-sns.set(rc={"figure.figsize": (12, 12)}, font_scale=1.5)
-cmap = sns.cubehelix_palette(as_cmap=True)
-
-fig, ((ax1, ax2),(ax3,ax4)) = plt.subplots(2,2)
-fig.suptitle('Weighted node clustering coefficients for journeys \nby Public Transport vs. Euclidean distance')
-fig.text(0.5, 0.04, 'Euclidean Distance', ha='center', va='center')
-fig.text(0.06, 0.5, 'Public Transport journey length', ha='center', va='center', rotation='vertical')
-
-inc =ax1.scatter(x=df['euclid'], y=df['PT'], c=df['Income'], cmap=cmap, s=28.0)
-ax1.get_xaxis().set_visible(False)
-ax1.invert_yaxis()
-ax1.invert_xaxis()
-fig.colorbar(inc, ax=ax1)
-ax1.set_title('Average Income per Household')
-SES = ax2.scatter(x=df['euclid'], y=df['PT'], c=df['SES'], cmap=cmap, s=28.0)
-ax2.get_xaxis().set_visible(False)
-ax2.get_yaxis().set_visible(False)
-ax2.invert_yaxis()
-ax2.invert_xaxis()
-fig.colorbar(SES, ax=ax2)
-ax2.set_title('Average Socio Economic Status')
-Job = ax3.scatter(x=df['euclid'], y=df['PT'], c=df['no Job'], cmap=cmap, s=28.0)
-ax3.get_xaxis().set_visible(True)
-ax3.invert_yaxis()
-ax3.invert_xaxis()
-fig.colorbar(Job, ax=ax3)
-ax3.set_title('Population fraction being Jobless')
-LE = ax4.scatter(x=df['euclid'], y=df['PT'], c=df['Education'], cmap=cmap, s=28.0)
-ax4.get_xaxis().set_visible(True)
-ax4.get_yaxis().set_visible(False)
-ax4.invert_yaxis()
-ax4.invert_xaxis()
-fig.colorbar(LE, ax=ax4)
-ax4.set_title('Education Score (low=1, middle=2, high=3')
-
-
-plt.show()
-"""
-
-
-
-
-"""
-PT_per_euclid = []
-
-
-for i, each in enumerate(variable_C):
-    try:
-        PT_per_euclid.append(variable_B[i]/(each*1000))
-    except:
-        PT_per_euclid.append(np.nan)
-
-PT_per_euclid = np.array(PT_per_euclid)
-print(max(PT_per_euclid))
-
-#variable_C = np.array(pickle.load(open('IHHINK_GEM.p', 'rb'))[2017])
-#variable_D = np.array(pickle.load(open('BEVOPLMID_P.p', 'rb'))[2017])
-#variable_E = np.array(pickle.load(open('BEVOPLHOOG_P.p', 'rb'))[2017])
-
-#income_x = np.arange(start=10000, stop=210000, step=10000)
-
-edge_matrix = np.transpose(np.vstack((variable_A, variable_B, variable_C)))
-#variable_B[variable_B == 0.0] = np.nan
-#edge_matrix[edge_matrix == 0.0] = np.nan
-#nan_index = np.isnan(edge_matrix).all(axis=1)
-#edge_matrix = edge_matrix[~nan_index]
-
-df = pd.DataFrame(edge_matrix, columns=['PT', 'Bike', 'euclid'])
-"""
-
-
-#####Multivarible Histplot
-"""
-edge_matrix = np.vstack((variable_A, variable_B, variable_C))
-
-
-#edge_matrix = np.vstack((variable_C, variable_D, variable_E))
-#edge_matrix[edge_matrix == 0.0] = np.nan
-
-df = pd.DataFrame(edge_matrix)
-df.insert(0, "Level", ['low', 'middle', 'high'], True)
-df = df.melt(id_vars='Level', value_vars=None)
-
-sns.set(font_scale=1.5)
-f = plt.figure(figsize=(7,5))
-ax = f.add_subplot(1,1,1)
-
-# plot
-sns.histplot(data=df, ax=ax, stat="count", multiple="dodge",
-             x="value", kde=False,
-             palette=None, hue="Level",
-             element="bars", legend=True, binwidth=0.5)
-ax.set_title("Regression Coefficients of Buurt \nPopulation Percentage by Education Level")
-ax.set_xlabel("Regression Coefficient")
-ax.set_ylabel("Count")
-plt.tight_layout()
-plt.show()
-"""
-
-##### Histogram
-"""
-for each in node_variables.keys():
-    sns.set(rc={"figure.figsize": (12, 6)}, font_scale=1.5)
-    a = max(df_nodes[each])
-    a = sns.histplot(df_nodes[each], x=df_nodes[each], binwidth=(max(df_nodes[each])/100))
-    a.set_title(str(each))
-    plt.show()
-"""
-
-##### Multiple Scatterplot
-"""
-sns.set(rc={"figure.figsize": (12, 12)}, font_scale=1.5)
-cmap = sns.cubehelix_palette(as_cmap=True)
-
-fig, ((ax1, ax2),(ax3,ax4)) = plt.subplots(2,2)
-fig.suptitle('Weighted node clustering coefficients for journeys \nby Public Transport vs. Euclidean distance')
-fig.text(0.5, 0.04, 'Euclidean Distance', ha='center', va='center')
-fig.text(0.06, 0.5, 'Public Transport journey length', ha='center', va='center', rotation='vertical')
-
-inc =ax1.scatter(x=df['euclid'], y=df['PT'], c=df['Income'], cmap=cmap, s=28.0)
-ax1.get_xaxis().set_visible(False)
-ax1.invert_yaxis()
-ax1.invert_xaxis()
-fig.colorbar(inc, ax=ax1)
-ax1.set_title('Average Income per Household')
-SES = ax2.scatter(x=df['euclid'], y=df['PT'], c=df['SES'], cmap=cmap, s=28.0)
-ax2.get_xaxis().set_visible(False)
-ax2.get_yaxis().set_visible(False)
-ax2.invert_yaxis()
-ax2.invert_xaxis()
-fig.colorbar(SES, ax=ax2)
-ax2.set_title('Average Socio Economic Status')
-Job = ax3.scatter(x=df['euclid'], y=df['PT'], c=df['no Job'], cmap=cmap, s=28.0)
-ax3.get_xaxis().set_visible(True)
-ax3.invert_yaxis()
-ax3.invert_xaxis()
-fig.colorbar(Job, ax=ax3)
-ax3.set_title('Population fraction being Jobless')
-LE = ax4.scatter(x=df['euclid'], y=df['PT'], c=df['Education'], cmap=cmap, s=28.0)
-ax4.get_xaxis().set_visible(True)
-ax4.get_yaxis().set_visible(False)
-ax4.invert_yaxis()
-ax4.invert_xaxis()
-fig.colorbar(LE, ax=ax4)
-ax4.set_title('Education Score (low=1, middle=2, high=3')
-
-
-plt.show()
-"""
-
-####Linear Regression
-
-"""
-x = np.reshape(variable_L, (-1, 1))
-x = np.nan_to_num(x, nan=0.0)
-y_ = np.reshape(variable_M, (-1, 1))
-y_ = np.nan_to_num(y_, nan=0.0)
-
-regr = linear_model.LinearRegression()
-regr.fit(x, y_)
-y_pred = regr.predict(x)
-
-plt.scatter(x, y_,  color='black')
-plt.plot(x, y_pred, color='blue', linewidth=3)
-
-plt.xticks(())
-plt.yticks(())
-
-plt.show()
-"""
-
-#####Heatmap
-"""
-variable_M2 = np.array(df_edges['Edu_difference'])[~np.isnan(np.array(df_edges['Edu_difference']))]
-xmin = np.amin(np.array(df_edges['bike_speed']))
-xmax = np.amax(np.array(df_edges['bike_speed']))
-ymin = np.amin(variable_M2)
-ymax = np.amax(variable_M2)
-
-fig, axs = plt.subplots(ncols=1, sharey=True, figsize=(7, 4))
-#fig.subplots_adjust(hspace=0.5, left=0.07, right=0.93)
-ax = axs
-hb = ax.hexbin(x=np.array(df_edges['bike_speed']), y=np.array(df_edges['Edu_difference']), gridsize=50, cmap='plasma')
-ax.axis([xmin, xmax, ymin, ymax])
-ax.set_xlabel('Journey speed by bike')
-ax.set_ylabel('Difference in Education score')
-ax.set_title("Journey time by Bike vs. Difference in Education score")
-cb = fig.colorbar(hb, ax=ax)
-cb.set_label('counts')
-
-plt.show()
-"""
-
-
-###Scatterplot
-"""
-#sns.set_theme(style="ticks")
-#df = df.melt('Average Income 2017', var_name='category',  value_name='y')
-#u, c = np.unique(df["category"], return_inverse=True)
-
-sns.set(rc={"figure.figsize": (12, 8)}, font_scale=1.5)
-sc = plt.scatter(x=df['bike_speed'], y=df['Edu_difference'])
-#scmap = lambda i: plt.plot([],[], marker="o",ls="none", c=plt.cm.tab10(i))[0]
-#plt.gca().invert_yaxis()
-plt.xlabel('bike speed')
-plt.ylabel('Education difference')
-plt.title('this')
-#plt.legend(handles=[scmap(i) for i in range(len(u))],
-           #labels=list(u))
-#g = sns.catplot(x="Average Income 2017", data=df)
-plt.show()
-"""
-
-
-"""
-sns.set(rc={"figure.figsize": (12, 8)}, font_scale=1.5)
-plot_lm_1 = plt.figure(1)
-plot_lm_1.set_figheight(8)
-plot_lm_1.set_figwidth(12)
-
-plot_lm_1.axes[0] = sns.scatterplot(data=edge_matrix, x=edge_matrix[:,1], y=edge_matrix[:,0])
-
-plot_lm_1.axes[0].set_title('Bike vs. PT inverse travel time weighted clusters')
-plot_lm_1.axes[0].set_xlabel('PT_cluster_coefficients')
-plot_lm_1.axes[0].set_ylabel('Bike_cluster_coefficients')
-
-plot_lm_1.show()
-"""
-a = 10

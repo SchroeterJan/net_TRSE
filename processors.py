@@ -12,10 +12,10 @@ class SE_Neighborhoods:
         self.path_se = os.path.join(dir_data, file_se)
         self.path_geo = os.path.join(dir_data, file_geo)
 
-
+        self.area_size()
+        self.size_col = ['size']
         self.geo_id_col = column_names['geo_id_col']
         self.pop_col = column_names['pop_col']
-        self.size_col = column_names['size_col']
         self.geo_col_se = column_names['geo_id_se']
         self.year_col = column_names['year_col']
         self.se_var_col = column_names['se_var_col']
@@ -61,6 +61,15 @@ class SE_Neighborhoods:
             line_array = [i.strip() for i in line]               # strip to get rid of "newline"
             if line_array[self.se_var_col_ind] == var:
                 self.geo_data.at[str(line_array[self.geo_col_ind]), var] = line_array[self.se_col_ind]
+
+
+    def area_size(self):
+        # form shapely Polygons of all areas
+        area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
+                         in self.geo_data[column_names['area_polygon']]]
+        # area size in m^2
+        self.geo_data['size'] = [poly.area for poly in area_polygons]
+
 
 
     # filter by population density
@@ -209,7 +218,7 @@ class Passenger_Counts:
                 # assign equal flow fractions among the potential journeys
                 for combination in trip_combinations:
                     area_flow_matrix[combination[0], combination[1]] += (flow / len(trip_combinations))
-
+        area_flow_matrix[area_flow_matrix == 0.0] = np.nan
         return(pd.DataFrame(area_flow_matrix,
                             index=self.stop_area_association.index,
                             columns=self.stop_area_association.index))
