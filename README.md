@@ -31,21 +31,27 @@ The geographic data must contain two features:
 - area identifier
 - area shape
 
-For the example, public data provided by the administration of amsterdam is used.
+The example uses public data provided by the administration of Amsterdam.
 (source: https://data.amsterdam.nl/datasets/5L2CSm77FLZGYA/registratie-gebieden/ ; last access 25.02.21)
-Neighborhood units referred to as "Buurten" serve as granularity. (relevant file is therefore "Gebieden Buurt" as CSV)
+Neighborhood units referred to as "Buurten" serve as granularity. (relevant file is therefore "Gebieden Buurt" as csv)
 
-The data set provides a column "code" as area identifier and a column "geometrie" storing the areas shape as a polygon.
-Such polygon shape is preferred since shapely is used for interpretation and works immediately on this format.
+In the example areas are given as polygons, a format immediate to *shapely*, which is used for interpretation.
 
 Steps:
 
-1. 
+1. populate file_geo variable with the data sets name
+2. name geo_id_col in column_names
+3. name area_polygon in column_names 
+4. declare coordinate reference system of your data 
+(for help see: https://gis.stackexchange.com/questions/7839/identifying-coordinate-system-of-shapefile-when-unknown)
+
+
 ### Socio-economic data
 
-The socio-economic data must contain one feature:
+Obligatory features for the socio-economic data are:
 
 1. area identifier
+2. area population
 
 The example works with publicly available census data provided by the administration of amsterdam.
 (source: https://data.amsterdam.nl/datasets/G5JpqNbhweXZSw/basisbestand-gebieden-amsterdam-bbga/ ; last access)
@@ -53,6 +59,12 @@ The example works with publicly available census data provided by the administra
 This set stores information on several years and numerous area types. 
 Filters are therefore applied that may not be necessary for data sets of different format.
 
+Steps:
+
+1. populate file_se variable with the data sets name
+2. name matching area identifier column as geo_id_se in column_names
+3. name pop_col in column_names
+ 
 
 
 

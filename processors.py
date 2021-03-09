@@ -12,15 +12,6 @@ class SE_Neighborhoods:
         self.path_se = os.path.join(dir_data, file_se)
         self.path_geo = os.path.join(dir_data, file_geo)
 
-        self.area_size()
-        self.size_col = ['size']
-        self.geo_id_col = column_names['geo_id_col']
-        self.pop_col = column_names['pop_col']
-        self.geo_col_se = column_names['geo_id_se']
-        self.year_col = column_names['year_col']
-        self.se_var_col = column_names['se_var_col']
-        self.se_col = column_names['se_col']
-
         # load geographic data set if found
         if os.path.isfile(self.path_geo):
             print('loading geo data of the city')
@@ -28,12 +19,15 @@ class SE_Neighborhoods:
         else:
             print('ERROR - No geographic data found at: ' + self.path_geo)
 
+        self.size_col = 'size'
+        self.area_polygons()
+
         header = open(file=self.path_se, mode='r').readline()
         header = np.array([i.strip() for i in header.split(sep=';')])
-        self.geo_col_ind = np.where(header == self.geo_col_se)[0][0]
-        self.year_col_ind = np.where(header == self.year_col)[0][0]
-        self.se_var_col_ind = np.where(header == self.se_var_col)[0][0]
-        self.se_col_ind = np.where(header == self.se_col)[0][0]
+        self.geo_col_ind = np.where(header == column_names['geo_id_se'])[0][0]
+        self.year_col_ind = np.where(header == column_names['year_col'])[0][0]
+        self.se_var_col_ind = np.where(header == column_names['se_var_col'])[0][0]
+        self.se_col_ind = np.where(header == column_names['se_col'])[0][0]
         self.neighborhood_se.append(header.tolist())
 
 
@@ -41,7 +35,7 @@ class SE_Neighborhoods:
     # crop socio-economic data according to geographic data
     def crop_se(self, year):
         print('cropping socio-economic data')
-        geo_ids = set(self.geo_data[self.geo_id_col])
+        geo_ids = set(self.geo_data[column_names['geo_id_col']])
 
         if os.path.isfile(self.path_se):
             with open(file=self.path_se, mode='r') as se:                                    # open socio-economic data set
@@ -63,13 +57,46 @@ class SE_Neighborhoods:
                 self.geo_data.at[str(line_array[self.geo_col_ind]), var] = line_array[self.se_col_ind]
 
 
-    def area_size(self):
+    def area_polygons(self):
         # form shapely Polygons of all areas
         area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
                          in self.geo_data[column_names['area_polygon']]]
-        # area size in m^2
-        self.geo_data['size'] = [poly.area for poly in area_polygons]
+        area_polygons = geopandas.GeoSeries(area_polygons)
+        self.geo_data[self.size_col] = [poly.area for poly in area_polygons]
 
+        if crs_proj != "":
+            # transform polygon coordinates to geodetic lon/lat coordinates
+            area_polygons_new = []
+            crs_out = 'epsg:4326'
+            proj = Transformer.from_crs(crs_proj, crs_out)
+            for each in area_polygons:
+                x, y = each.exterior.coords.xy
+                polygon = []
+                for each in zip(x, y):
+                    lng_, lat_ = proj.transform(each[0], each[1])
+                    polygon.append((lat_, lng_))
+                area_polygons_new.append(Polygon(polygon))
+            area_polygons = geopandas.GeoSeries(area_polygons_new)
+
+        elif crs_proj == "":
+            print("Polygon coordinates given in espg:4326")
+        else:
+            print('Geographic system is wrongly defined')
+
+
+        # updating area polygons in data set
+        self.geo_data[column_names['area_polygon']] = area_polygons
+        # adding area centroids to data set
+        self.geo_data['centroid'] = [P.centroid for P in area_polygons]
+
+
+
+    # def area_size(self):
+    #     # form shapely Polygons of all areas
+    #     area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
+    #                      in self.geo_data[column_names['area_polygon']]]
+    #     # area size in m^2
+    #
 
 
     # filter by population density
@@ -77,8 +104,8 @@ class SE_Neighborhoods:
         print('filter low populated areas')
         self.geo_data = self.geo_data.replace(r'^\s*$', np.nan, regex=True)
         self.geo_data = self.geo_data.fillna(value=0.0)
-        self.geo_data = self.geo_data.astype({self.pop_col: int, self.size_col: float})
-        self.geo_data['pop_km2'] = self.geo_data[self.pop_col] / (self.geo_data[self.size_col]/1000000.0)
+        self.geo_data = self.geo_data.astype({column_names['pop_col']: int, self.size_col: float})
+        self.geo_data['pop_km2'] = self.geo_data[column_names['pop_col']] / (self.geo_data[self.size_col]/1000000.0)
         self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
 
 
@@ -87,7 +114,6 @@ class Passenger_Counts:
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         path_passcount = os.path.join(dir_data, file_passcount)
-        path_stops = os.path.join(dir_data, file_stops)
 
         if os.path.isfile(path_passcount):
             print('Loading Flow Data')
@@ -97,7 +123,6 @@ class Passenger_Counts:
 
         if os.path.isfile(path_stops):
             print('Loading Stop Information')
-            self.path_stops = path_stops
             self.stops = pd.read_csv(filepath_or_buffer=path_stops, sep=';')
         else:
             print('ERROR - No stop location data found in path: ' + path_stops)
@@ -128,13 +153,14 @@ class Passenger_Counts:
             self.stops[column_names['stop_lat']])]
         stop_points = geopandas.GeoSeries(stop_points)
 
-        # form shapely Polygons of all areas
+        # reload areas into shapely/geopandas
         area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
                          in self.neighborhood_se[column_names['area_polygon']]]
         area_polygons = geopandas.GeoSeries(area_polygons)
 
         # distance Matrix of all stops (Points) and areas (Polygons)
-        stops_area_distance_matrix = stop_points.apply(lambda stop: area_polygons.distance(stop))
+        stops_area_distance_matrix = \
+            stop_points.apply(lambda stop: area_polygons.distance(stop))
 
         # extract stops inside or proximate to relevant areas
         short_distance, a = np.where(stops_area_distance_matrix <= proximity)
@@ -229,13 +255,6 @@ class TransportPrep:
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
-        self.locations = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'Buurten_PC6.csv'), sep=';')
-
-        if os.path.isfile(path_bike):
-            print('Loading bike times')
-            self.bike_data = pd.read_csv(filepath_or_buffer=path_bike, sep=',')
-        else:
-            print('ERROR - bike times data found in path: ' + path_bike)
 
         if os.path.isfile(path_neighborhood_se):
             print('Loading neighborhood data')
@@ -243,14 +262,20 @@ class TransportPrep:
         else:
             print('ERROR - No neighborhood data found in path: ' + path_neighborhood_se)
 
+        if os.path.isfile(os.path.join(dir_data, file_locations)):
+            print('Loading provided locations for travel times')
+            self.locations = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, file_locations), sep=';')
+
+
+
 
     def get_gh_times(self):
         grabber = GH_grabber()
-        if os.path.isfile(path_bike):
+        if os.path.isfile(path_bike_scrape):
             print('removing existing Graphhopper times')
-            os.remove(path_bike)
+            os.remove(path_bike_scrape)
 
-        with open(file=path_bike, mode='w') as GHtimes:
+        with open(file=path_bike_scrape, mode='w') as GHtimes:
             GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')
             for i, or_row in enumerate(self.locations):
                 for j, dest_row in enumerate(self.locations[i + 1:]):
@@ -276,8 +301,14 @@ class TransportPrep:
 
 
     def order_times(self):
-        times_matrix = self.build_matrix(length=len(self.locations.index),
-                                         data_list=list(self.bike_data['DURATION']/1000.0))
+        if os.path.isfile(path_bike_scrape):
+            print('Loading bike times')
+            bike_data = pd.read_csv(filepath_or_buffer=path_bike_scrape, sep=',')
+        else:
+            print('ERROR - no bike times data found in path: ' + path_bike_scrape)
+
+        times_matrix = self.build_matrix(length=len(self.locations[column_names['geo_id_col']]),
+                                         data_list=list(bike_data['DURATION']/1000.0))
         matrix_bike = pd.DataFrame(times_matrix,
                                    index=self.locations[column_names['geo_id_col']],
                                    columns=self.locations[column_names['geo_id_col']])
@@ -285,55 +316,56 @@ class TransportPrep:
         matrix_bike = matrix_bike.reindex(columns=self.neighborhood_se[column_names['geo_id_col']])
         return matrix_bike
 
-    def compare9292(self):
-        self.loadOTPtimes()
-
-        Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
-        BuurtBBGA = set(self.BBGA_Buurt_data.index)  # convert to set for fast lookups
-        BuurtDiff = [i for i, item in enumerate(Buurts_9292) if item not in BuurtBBGA]
-
-        minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
-
-        OTP_times = np.array(self.OTP_times_data['DURATION'])
-        """
-        for i, each in enumerate(OTP_times):
-            try:
-                a = float(each)%60
-                if a <= 30.0:
-                    OTP_times[i] = float(each)-a
-                else:
-                    OTP_times[i] = float(each)+(60.0-a)
-            except:
-                continue
-        """
-
-        matrix_OTP = DataHandling().build_matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
-                                                 data_list=OTP_times)
-        matrix_9292 = DataHandling().build_matrix(length=len(Buurts_9292), data_list=minadvice_9292)
-        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
-        matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
-        Buurts_9292 = np.delete(arr=Buurts_9292, obj=BuurtDiff)
-        matrix_9292 = pd.DataFrame(matrix_9292, columns=pd.Series(Buurts_9292)).set_index(pd.Series(Buurts_9292))
-        matrix_9292 = matrix_9292.reindex(index=self.BBGA_Buurt_data.index)
-        matrix_9292 = matrix_9292.reset_index().drop(columns='Buurt_code')
-        matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
-
-
-        self.BBGA_Buurt_data['clust_9292']= Analysis().Clustering(matrix=matrix_9292,
-                                                                  Buurten=np.array(self.BBGA_Buurt_data.index))
-        self.BBGA_Buurt_data['clust_OTP'] = Analysis().Clustering(matrix=matrix_OTP,
-                                                                   Buurten=np.array(self.BBGA_Buurt_data.index))
-
-        self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
-                                    index=True, index_label='Buurt_code', sep=';')
-
-        clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
-                                 sep=';')
-        temp = np.array(clust_comp['clust_9292']).argsort()
-        ranks_9292 = np.empty_like(temp)
-        ranks_9292[temp] = np.arange(len(np.array(clust_comp['clust_9292'])))
-        temp = np.array(clust_comp['clust_OTP']).argsort()
-        ranks_OTP = np.empty_like(temp)
-        ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
-        clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
+    #
+    # def compare9292(self):
+    #     self.loadOTPtimes()
+    #
+    #     Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
+    #     BuurtBBGA = set(self.BBGA_Buurt_data.index)  # convert to set for fast lookups
+    #     BuurtDiff = [i for i, item in enumerate(Buurts_9292) if item not in BuurtBBGA]
+    #
+    #     minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
+    #
+    #     OTP_times = np.array(self.OTP_times_data['DURATION'])
+    #     """
+    #     for i, each in enumerate(OTP_times):
+    #         try:
+    #             a = float(each)%60
+    #             if a <= 30.0:
+    #                 OTP_times[i] = float(each)-a
+    #             else:
+    #                 OTP_times[i] = float(each)+(60.0-a)
+    #         except:
+    #             continue
+    #     """
+    #
+    #     matrix_OTP = DataHandling().build_matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
+    #                                              data_list=OTP_times)
+    #     matrix_9292 = DataHandling().build_matrix(length=len(Buurts_9292), data_list=minadvice_9292)
+    #     matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
+    #     matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
+    #     Buurts_9292 = np.delete(arr=Buurts_9292, obj=BuurtDiff)
+    #     matrix_9292 = pd.DataFrame(matrix_9292, columns=pd.Series(Buurts_9292)).set_index(pd.Series(Buurts_9292))
+    #     matrix_9292 = matrix_9292.reindex(index=self.BBGA_Buurt_data.index)
+    #     matrix_9292 = matrix_9292.reset_index().drop(columns='Buurt_code')
+    #     matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
+    #
+    #
+    #     self.BBGA_Buurt_data['clust_9292']= Analysis().Clustering(matrix=matrix_9292,
+    #                                                               Buurten=np.array(self.BBGA_Buurt_data.index))
+    #     self.BBGA_Buurt_data['clust_OTP'] = Analysis().Clustering(matrix=matrix_OTP,
+    #                                                                Buurten=np.array(self.BBGA_Buurt_data.index))
+    #
+    #     self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
+    #                                 index=True, index_label='Buurt_code', sep=';')
+    #
+    #     clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
+    #                              sep=';')
+    #     temp = np.array(clust_comp['clust_9292']).argsort()
+    #     ranks_9292 = np.empty_like(temp)
+    #     ranks_9292[temp] = np.arange(len(np.array(clust_comp['clust_9292'])))
+    #     temp = np.array(clust_comp['clust_OTP']).argsort()
+    #     ranks_OTP = np.empty_like(temp)
+    #     ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
+    #     clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
 

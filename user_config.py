@@ -2,11 +2,18 @@
 dir_data = r'C:\Users\jan.schroeter\Documents\Uni\Thesis\Data\Raw_Data'
 
 # raw data Files
+file_geo = 'GBD_buurt_Actueel.csv'
+# declare coordinate reference system of the polygon data, if already in epsg:4326 leave blank ("")
+crs_proj = 'epsg:28992'
+
+# socio-economic data set
+file_se = 'bbga_latest_and_greatest.csv'
+
+# locations for travel times (defaults to area centers if "" given)
+file_locations = r'deprecated/Buurten_PC6.csv'
+
 file_passcount = 'HBReizen_Schroter.csv'
 file_stops = 'stop_locations.csv'
-file_se = 'bbga_latest_and_greatest.csv'
-file_geo = 'GBD_buurt_Actueel.csv'
-file_biketimes = 'GH_bike.csv'
 
 
 ### CONSTANTS

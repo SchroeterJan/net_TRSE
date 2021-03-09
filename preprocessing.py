@@ -4,15 +4,14 @@ from config import *
 
 def areas():
     se_prep = SE_Neighborhoods()
-    se_prep.area_size()
     # check if prepared data already exists
-    # if os.path.isfile(path_neighborhood_se):
-    #     print('removing existing Neighborhood SE Data')
-    #     os.remove(path_neighborhood_se)
+    if os.path.isfile(path_neighborhood_se):
+        print('removing existing Neighborhood SE Data')
+        os.remove(path_neighborhood_se)
 
     # crop socio-economic data to relevant year and areas
     se_prep.crop_se(year=se_year)
-    se_prep.geo_data = se_prep.geo_data.set_index(se_prep.geo_id_col, drop=False)
+    se_prep.geo_data = se_prep.geo_data.set_index(keys=column_names['geo_id_col'], drop=False)
 
     # keep only relevant socio-economic variables
     for variable in census_variables:
@@ -26,7 +25,20 @@ def areas():
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
+def bike_times():
+    trans_prep = TransportPrep()
+    if not os.path.isfile(path_bike_scrape):
+        print('Gather bike times\n Make sure GH server is running!')
+        trans_prep.get_gh_times()
+
+    bike_times = trans_prep.order_times()
+    bike_times.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
+
+
 def flows():
+    if os.path.isfile(path_flows):
+        print('removing existing flow Data')
+        os.remove(path_flows)
     flow_prep = Passenger_Counts()
     flow_prep.area_stop_matching()
     flow_prep.filter_passcount()
@@ -36,19 +48,9 @@ def flows():
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
-def bike_times():
-    trans_prep = TransportPrep()
-    if not os.path.isfile(path_bike):
-        print('Gather bike times\n Make sure GH server is running!')
-        trans_prep.get_gh_times()
-
-    bike_times = trans_prep.order_times()
-    bike_times.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
-
-areas()
+# areas()
 # flows()
-
-# bike_times()
+bike_times()
 
 
 
