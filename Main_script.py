@@ -6,16 +6,13 @@ handler = DataHandling()
 plotter = Plotting()
 analyzer = Analysis(handler=handler)
 
-
 path_clustercoeff = os.path.join(path_repo, path_generated, 'neighborhood_clustercoeff.csv')
-
 
 ### CLUSTERING
 def cluster_all():
-    clusters = pd.DataFrame(index=handler.neighborhood_se.index)
-    clusters['pt_all'] = analyzer.Clustering(matrix=handler.pt.to_numpy())
-    clusters['bike_all'] = analyzer.Clustering(matrix=handler.bike.to_numpy())
-    clusters['flows_all'] = analyzer.Clustering(matrix=handler.flows.to_numpy())
+    clusters['pt_all'] = analyzer.clustering(matrix=handler.pt.to_numpy())
+    clusters['bike_all'] = analyzer.clustering(matrix=handler.bike.to_numpy())
+    clusters['flows_all'] = analyzer.clustering(matrix=handler.flows.to_numpy())
     clusters.to_csv(path_or_buf=path_clustercoeff, sep=';')
 
 
@@ -25,16 +22,15 @@ def cluster_rel():
     handler.pt[unused[0], unused[1]] = 0.0
     handler.bike = np.array(handler.bike)
     handler.bike[unused[0], unused[1]] = 0.0
-    cluster['pt_rel'] = analyzer.Clustering(matrix=handler.pt)
-    cluster['bike_rel'] = analyzer.Clustering(matrix=handler.bike)
-    cluster.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
-
-
+    clusters['pt_rel'] = analyzer.clustering(matrix=handler.pt)
+    clusters['bike_rel'] = analyzer.clustering(matrix=handler.bike)
+    clusters.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
 
 
 if os.path.isfile(path_clustercoeff):
-    cluster = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
+    clusters = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
 else:
+    clusters = pd.DataFrame(index=handler.neighborhood_se.index)
     cluster_all()
     cluster_rel()
 

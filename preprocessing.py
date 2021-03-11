@@ -3,7 +3,7 @@ from config import *
 
 
 def areas():
-    se_prep = SE_Neighborhoods()
+    se_prep = SENeighborhoods()
     # check if prepared data already exists
     if os.path.isfile(path_neighborhood_se):
         print('removing existing Neighborhood SE Data')
@@ -31,15 +31,15 @@ def bike_times():
         print('Gather bike times\n Make sure GH server is running!')
         trans_prep.get_gh_times()
 
-    bike_times = trans_prep.order_times()
-    bike_times.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
+    bike_time = trans_prep.order_times()
+    bike_time.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
 
 
 def flows():
     if os.path.isfile(path_flows):
         print('removing existing flow Data')
         os.remove(path_flows)
-    flow_prep = Passenger_Counts()
+    flow_prep = PassengerCounts()
     flow_prep.area_stop_matching()
     flow_prep.filter_passcount()
     area_flow_matrix = flow_prep.assign_passcounts()
@@ -48,9 +48,6 @@ def flows():
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
-# areas()
-# flows()
+areas()
+flows()
 bike_times()
-
-
-

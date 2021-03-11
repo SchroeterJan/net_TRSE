@@ -2,7 +2,7 @@ from config import *
 from Routing import *
 
 
-class SE_Neighborhoods:
+class SENeighborhoods:
     # set up DataFrame for socio-economic variables
     neighborhood_se = []
 
@@ -30,8 +30,6 @@ class SE_Neighborhoods:
         self.se_col_ind = np.where(header == column_names['se_col'])[0][0]
         self.neighborhood_se.append(header.tolist())
 
-
-
     # crop socio-economic data according to geographic data
     def crop_se(self, year):
         print('cropping socio-economic data')
@@ -46,7 +44,6 @@ class SE_Neighborhoods:
         else:
             print('ERROR - No socio-economic data found at: ' + self.path_se)
 
-
     # extract variables of interest from socio-economic data set
     def extract_var(self, var):
         print('Extracting Variable ' + var)
@@ -56,7 +53,6 @@ class SE_Neighborhoods:
             if line_array[self.se_var_col_ind] == var:
                 self.geo_data.at[str(line_array[self.geo_col_ind]), var] = line_array[self.se_col_ind]
 
-
     def area_polygons(self):
         # form shapely Polygons of all areas
         area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
@@ -64,7 +60,7 @@ class SE_Neighborhoods:
         area_polygons = geopandas.GeoSeries(area_polygons)
         self.geo_data[self.size_col] = [poly.area for poly in area_polygons]
 
-        if crs_proj != "":
+        if crs_proj != None:
             # transform polygon coordinates to geodetic lon/lat coordinates
             area_polygons_new = []
             crs_out = 'epsg:4326'
@@ -89,16 +85,6 @@ class SE_Neighborhoods:
         # adding area centroids to data set
         self.geo_data['centroid'] = [P.centroid for P in area_polygons]
 
-
-
-    # def area_size(self):
-    #     # form shapely Polygons of all areas
-    #     area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
-    #                      in self.geo_data[column_names['area_polygon']]]
-    #     # area size in m^2
-    #
-
-
     # filter by population density
     def filter_areas(self):
         print('filter low populated areas')
@@ -109,7 +95,7 @@ class SE_Neighborhoods:
         self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
 
 
-class Passenger_Counts:
+class PassengerCounts:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
@@ -139,7 +125,6 @@ class Passenger_Counts:
         self.or_ind = np.where(header == column_names['pass_or'])[0][0]
         self.dest_ind = np.where(header == column_names['pass_dest'])[0][0]
         self.flow_ind = np.where(header == column_names['pass_vol'])[0][0]
-
 
     def area_stop_matching(self):
         print('Matching areas and stops according to proximity conditions')
@@ -252,7 +237,6 @@ class Passenger_Counts:
 
 class TransportPrep:
 
-
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
 
@@ -265,9 +249,6 @@ class TransportPrep:
         if os.path.isfile(os.path.join(dir_data, file_locations)):
             print('Loading provided locations for travel times')
             self.locations = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, file_locations), sep=';')
-
-
-
 
     def get_gh_times(self):
         grabber = GH_grabber()
@@ -284,8 +265,7 @@ class TransportPrep:
 
                 print('Finished row ' + str(i))
 
-
-    def build_matrix(self, length, data_list):
+    def build_matrix(self, length: int, data_list: list):
         matrix = np.zeros([length, length], dtype=float)
         k = 0
         for row in range(length):
@@ -298,7 +278,6 @@ class TransportPrep:
                 k += 1
         matrix[matrix == 0.0] = np.nan
         return matrix
-
 
     def order_times(self):
         if os.path.isfile(path_bike_scrape):
@@ -368,4 +347,3 @@ class TransportPrep:
     #     ranks_OTP = np.empty_like(temp)
     #     ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
     #     clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
-

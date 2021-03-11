@@ -5,10 +5,9 @@ class DataHandling:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        self.Load_Data()
+        self.load_data()
 
-
-    def Load_Data(self):
+    def load_data(self):
         print("Loading data")
         self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
@@ -17,8 +16,7 @@ class DataHandling:
         self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'),
                               sep=';', index_col=0)
 
-
-    def Build_speed_vector(self, variable, euclid, name):
+    def build_speed_vector(self, variable, euclid, name):
         speed = []
         for i, each in enumerate(euclid):
             speed = (each*1000.0)/(variable[i]/60.0)
@@ -26,9 +24,7 @@ class DataHandling:
 
         pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
 
-
-
-    def Thresholding(self, variable, largest_extend):
+    def thresholding(self, variable, largest_extend):
         variable = np.nan_to_num(x=variable, nan=0.0)
         largest = np.argsort(variable)[-largest_extend:]
         for each in largest:
@@ -39,7 +35,7 @@ class DataHandling:
         print(' thresholded to ' + str(variable[largest[0]]))
         return variable
 
-    def MatrixThresholding(self, variable, extend, length):
+    def threshold_matrix(self, variable, extend, length):
         matrix = self.Build_Matrix(length=length,
                                                data_list=np.array(variable))
         matrix2 = np.triu(matrix, k=0)
@@ -53,7 +49,7 @@ class DataHandling:
         matrix = np.delete(arr=matrix, obj=np.where(matrix == 0.0))
         return matrix
 
-    def DifferenceMatrix(self, vector):
+    def difference_matrix(self, vector):
 
         edges = []
         for i, Buurt_score in enumerate(vector):
@@ -71,14 +67,14 @@ class Plotting:
         print("Initializing " + self.__class__.__name__)
         sns.set(rc={"figure.figsize": (14, 18)}, font_scale=2.0)
 
-    def Correlation_Heatmap(self, df):
+    def correlation_heatmap(self, df):
         print("Plotting Correlation Heatmap of given DataFrame")
         corrmat = df.corr()
         f, ax = plt.subplots(figsize=(9, 8))
         sns.heatmap(corrmat, ax=ax, cmap="RdYlBu", linewidths=0.1)
         plt.show()
 
-    def Heatscatter(self, x, y, xlabel='', ylabel='', title='', log=False, multi=False, av=False, multiax=False):
+    def heatscatter(self, x, y, xlabel='', ylabel='', title='', log=False, multi=False, av=False, multiax=False):
         ### Compile Test plot to find xmax
         fig_test, ax_test = plt.subplots()
         hb_test = ax_test.hexbin(x=x, y=y, gridsize=50, mincnt=2)
@@ -141,16 +137,14 @@ class Plotting:
         else:
             plt.show()
 
-
-
-    def MultiHeatScatter(self, x, y, axt, shape, suptitle='', ytext='', xtext=''):
-        fig, axes = self.MultiPlot(shape=shape, suptitle=suptitle, ytext=ytext, xtext=xtext)
+    def multi_head_scatter(self, x, y, axt, shape, suptitle='', ytext='', xtext=''):
+        fig, axes = self.multi_plot(shape=shape, suptitle=suptitle, ytext=ytext, xtext=xtext)
         axes_count = 0
         row_count = 0
         for row_axes in axes:
             for axis in row_axes:
                 y_ = y[axes_count]
-                hb = self.Heatscatter(x=x, y=y_, log=False, multi=True, multiax=axis, av=True)
+                hb = self.heatscatter(x=x, y=y_, log=False, multi=True, multiax=axis, av=True)
                 if row_count != (len(axes) - 1):
                     axis.get_xaxis().set_visible(False)
                 cb = fig.colorbar(hb, ax=axis)
@@ -163,15 +157,15 @@ class Plotting:
 
         plt.show()
 
-    def MultiPlot(self, shape, suptitle='', ytext='', xtext= ''):
+    def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
         fig, axes = plt.subplots(shape[0], shape[1])
         #fig.suptitle(suptitle)
         fig.text(0.5, 0.04, xtext, ha='center', va='center')
         fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
         return fig, axes
 
-    def MultiScatter(self, x, y, c, axt, shape, suptitle='', ytext='', xtext=''):
-        fig, axes = self.MultiPlot(shape=shape, suptitle=suptitle, ytext=ytext, xtext=xtext)
+    def multi_scatter(self, x, y, c, axt, shape, suptitle='', ytext='', xtext=''):
+        fig, axes = self.multi_plot(shape=shape, suptitle=suptitle, ytext=ytext, xtext=xtext)
         cmap = sns.cubehelix_palette(as_cmap=True)
 
         axes_count = 0
@@ -197,16 +191,13 @@ class Plotting:
                     frameon=None, metadata=None)
         plt.show()
 
-    def Hist(self, series, title, bins):
+    def hist(self, series, title, bins):
         a = sns.histplot(series, x=series, bins=bins)
         a.set_title(title)
         plt.savefig(fname=title)
         plt.show()
 
-
-
-
-    def Scatter(self, df, x, y, xlabel=None, ylabel=None, title=''):
+    def scatter(self, df, x, y, xlabel=None, ylabel=None, title=''):
         #sns.set_theme(style="ticks")
         #df = df.melt('Average Income 2017', var_name='category',  value_name='y')
         #u, c = np.unique(df["category"], return_inverse=True)
@@ -235,11 +226,9 @@ class Plotting:
 
 class Analysis:
 
-
     def __init__(self, handler):
         self.handler = handler
         print("Initializing " + self.__class__.__name__)
-
 
     def find_max(self, matrix2, max_extend):
         print("Getting the " + str(max_extend) + " fastest trips")
@@ -254,8 +243,7 @@ class Analysis:
             temp[max_val[0]][max_val[1]] = 0.0
         return np.array(trips), np.array(trips_index)
 
-
-    def Clustering(self, matrix):
+    def clustering(self, matrix):
         neighborhoods = self.handler.neighborhood_se.index
         Graph = nx.Graph()
         matrix = np.nan_to_num(x=matrix, nan=0.0)
@@ -272,6 +260,3 @@ class Analysis:
         cluster_dict = nx.clustering(Graph, weight='weight')
         cluster_values = np.array(list(cluster_dict.values()))
         return cluster_values
-
-
-

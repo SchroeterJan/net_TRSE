@@ -1,5 +1,5 @@
 # NetTRSE
-Network Science approach to Transport-related social exclusion.
+Network Science approach to transport-related social exclusion.
 Analyzing Cities as networks of travel-time and -flow.
 
 Mandatory input:
@@ -63,11 +63,31 @@ Steps:
 
 1. populate file_se variable with the data sets name
 2. name matching area identifier column as geo_id_se in column_names
-3. name pop_col in column_names
- 
+3. populate pop_col in column_names
+4. populate year_col in column_names
+5. populate se_var_col in column_names
+6. populate se_col in column_names
+
+
+### Travel times
+
+Travel times between areas can either be provided as matrices where both rows and columns refer to the areas,
+or scraped using open source routing engines. The following engines are supported for the respective modes:
+
+   a. Bike (e.g. Graphhopper=https://github.com/graphhopper/graphhopper)
+   
+   b. Public Transport (e.g. OpenTripPlanner=https://github.com/opentripplanner/OpenTripPlanner)
+
+Using these engines requires Java. To set up the corresponding web servers for scraping, please follow these tutorials:
+http://docs.opentripplanner.org/en/latest/Basic-Tutorial/
+https://github.com/graphhopper/graphhopper/blob/2.x/docs/web/quickstart.md
+
+Locations of origin and destination can be given explicitly by population file_locations.
+The example uses street locations closest to an areas centroid.
+
+
+### Passenger flows
 
 
 
-    a. Bike (e.g. Graphhopper=https://github.com/graphhopper/graphhopper)
-    
-    b. Public Transport (e.g. OpenTripPlanner=https://github.com/opentripplanner/OpenTripPlanner)
+
