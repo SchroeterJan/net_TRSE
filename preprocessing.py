@@ -4,10 +4,6 @@ from config import *
 
 def areas():
     se_prep = SENeighborhoods()
-    # check if prepared data already exists
-    if os.path.isfile(path_neighborhood_se):
-        print('removing existing Neighborhood SE Data')
-        os.remove(path_neighborhood_se)
 
     # crop socio-economic data to relevant year and areas
     se_prep.crop_se(year=se_year)
@@ -22,6 +18,10 @@ def areas():
 
     # write resulting data set to disk
     print('writing preprocessed data to disk')
+    # check if prepared data already exists
+    if os.path.isfile(path_neighborhood_se):
+        print('removing existing Neighborhood SE Data')
+        os.remove(path_neighborhood_se)
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
@@ -36,15 +36,15 @@ def bike_times():
 
 
 def flows():
-    if os.path.isfile(path_flows):
-        print('removing existing flow Data')
-        os.remove(path_flows)
     flow_prep = PassengerCounts()
     flow_prep.area_stop_matching()
-    flow_prep.filter_passcount()
+    flow_prep.filter_connections()
     area_flow_matrix = flow_prep.assign_passcounts()
 
     print('Writing flow matrix to disk')
+    if os.path.isfile(path_flows):
+        print('removing existing flow Data')
+        os.remove(path_flows)
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 

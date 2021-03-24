@@ -29,7 +29,7 @@ import pickle
 
 
 # Find repo direction
-path_repo = os.path.dirname(os.path.abspath(__file__))
+path_repo = os.getcwd()
 
 # path for generated data
 path_generated = 'Generated_data'

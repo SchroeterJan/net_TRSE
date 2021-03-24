@@ -179,7 +179,7 @@ class PassengerCounts:
                                                   index=self.neighborhood_se[column_names['geo_id_col']],
                                                   columns=self.stops[column_names['stop_name']])
 
-    def filter_passcount(self):
+    def filter_connections(self):
         print('Filter irrelevant connections')
         # set up pure route frame
         connections = pd.DataFrame(data={'or': self.pass_data[column_names['pass_or']],

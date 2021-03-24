@@ -1,14 +1,59 @@
 from Classes import *
+from processors import *
 from config import *
 
-### Class objects
+# Class objects
 handler = DataHandling()
-plotter = Plotting()
 analyzer = Analysis(handler=handler)
 
-path_clustercoeff = os.path.join(path_repo, path_generated, 'neighborhood_clustercoeff.csv')
+path_experiments = os.path.join(path_repo, 'experiment_data')
+if not os.path.isdir(path_experiments):
+    os.mkdir(path_experiments)
 
-### CLUSTERING
+path_stopflows = os.path.join(path_experiments, 'stop_flows.csv')
+
+# get total in- and outbound passenger flow for each stop
+def stop_flows():
+    # follow the data preparation steps up to the assignment algorithm
+    flow_prep = PassengerCounts()
+    #flow_prep.area_stop_matching()
+    flow_prep.filter_connections()
+
+    # cast flows to integer, "coerce" sets non integer values to nan
+    flow_prep.pass_data[column_names['pass_vol']] = pd.to_numeric(flow_prep.pass_data[column_names['pass_vol']],
+                                                                  errors='coerce')
+    # group by stop and sum the flows for both origin and destination
+    or_sum = flow_prep.pass_data.groupby([column_names['pass_or']]).sum()
+    dest_sum = flow_prep.pass_data.groupby([column_names['pass_dest']]).sum()
+    # join sums to stop list
+    flow_prep.stops = flow_prep.stops.set_index(keys=column_names['stop_name'], drop=True)
+    flow_prep.stops = flow_prep.stops.join(or_sum)
+    flow_prep.stops = flow_prep.stops.join(dest_sum, rsuffix='dest_flows')
+    # write stop list to disk
+    flow_prep.stops.columns = [column_names['stop_lat'], column_names['stop_lng'], 'or_flows', 'dest_flows']
+    flow_prep.stops.to_csv(path_or_buf=path_stopflows, sep=';', index=True)
+
+
+def difference_matrix(vector):
+    edges = []
+    for i, Buurt_score in enumerate(vector):
+        for j, Buurt_score2 in enumerate(vector[i + 1:]):
+            edges.append(np.absolute(Buurt_score - Buurt_score2))
+    return np.array(edges)
+
+
+def se_matrices():
+    builder = TransportPrep()
+    for variable in census_variables:
+        matrix = difference_matrix(handler.neighborhood_se[variable])
+        matrix = builder.build_matrix(length=len(handler.neighborhood_se[variable]), data_list=list(matrix))
+        matrix = pd.DataFrame(data=matrix,
+                              index=handler.neighborhood_se[column_names['geo_id_col']],
+                              columns=handler.neighborhood_se[column_names['geo_id_col']])
+        matrix.to_csv(path_or_buf=os.path.join(path_experiments, 'matrix_' + variable), sep=';', index=True)
+
+
+# CLUSTERING
 def cluster_all():
     clusters['pt_all'] = analyzer.clustering(matrix=handler.pt.to_numpy())
     clusters['bike_all'] = analyzer.clustering(matrix=handler.bike.to_numpy())
@@ -18,21 +63,35 @@ def cluster_all():
 
 def cluster_rel():
     unused = np.where(np.isnan(handler.flows.to_numpy()))
-    handler.pt = np.array(handler.pt)
-    handler.pt[unused[0], unused[1]] = 0.0
-    handler.bike = np.array(handler.bike)
-    handler.bike[unused[0], unused[1]] = 0.0
-    clusters['pt_rel'] = analyzer.clustering(matrix=handler.pt)
-    clusters['bike_rel'] = analyzer.clustering(matrix=handler.bike)
+    clust_pt = np.array(handler.pt)
+    clust_pt[unused[0], unused[1]] = 0.0
+    clust_bike = np.array(handler.bike)
+    clust_bike[unused[0], unused[1]] = 0.0
+    clusters['pt_rel'] = analyzer.clustering(matrix=clust_pt)
+    clusters['bike_rel'] = analyzer.clustering(matrix=clust_bike)
     clusters.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
 
 
-if os.path.isfile(path_clustercoeff):
-    clusters = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
-else:
-    clusters = pd.DataFrame(index=handler.neighborhood_se.index)
-    cluster_all()
-    cluster_rel()
+path_clustercoeff = os.path.join(path_generated, 'neighborhood_clustercoeff.csv')
+
+
+def get_cluster():
+    if os.path.isfile(path_clustercoeff):
+        clusters = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
+    else:
+        clusters = pd.DataFrame(index=handler.neighborhood_se.index)
+        cluster_all()
+        cluster_rel()
+    return clusters
+
+# stop_flows()
+se_matrices()
+clusters = get_cluster()
+
+
+
+
+
 
 
 

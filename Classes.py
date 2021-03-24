@@ -62,6 +62,8 @@ class DataHandling:
 class Plotting:
     plt.style.use('seaborn')  # pretty matplotlib plots
     plt.rc('font', size=24)
+    path_plot = os.path.join(path_repo, 'plots')
+    path_hists = os.path.join(path_plot, 'hists')
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
@@ -191,11 +193,10 @@ class Plotting:
                     frameon=None, metadata=None)
         plt.show()
 
-    def hist(self, series, title, bins):
-        a = sns.histplot(series, x=series, bins=bins)
+    def hist(self, series, title):
+        a = sns.histplot(series, x=series)
         a.set_title(title)
-        plt.savefig(fname=title)
-        plt.show()
+        plt.savefig(fname=os.path.join(self.path_hists, title))
 
     def scatter(self, df, x, y, xlabel=None, ylabel=None, title=''):
         #sns.set_theme(style="ticks")
