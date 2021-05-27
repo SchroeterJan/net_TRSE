@@ -6,14 +6,16 @@ import itertools
 
 import pandas as pd
 import numpy as np
+import math
 
 import geopandas
+import geoplot
+from spopt.region.skater import Skater
 
 from shapely.geometry import Point
 from shapely.geometry import Polygon
 import shapely.wkt
 from pyproj import Transformer
-
 
 import requests as rq
 import json
@@ -24,6 +26,7 @@ import matplotlib.pyplot as plt
 
 import networkx as nx
 from scipy.stats import kendalltau
+from sklearn.cluster import KMeans
 
 import pickle
 
@@ -42,3 +45,6 @@ path_neighborhood_se = os.path.join(path_repo, path_generated, file_neighborhood
 path_flows = os.path.join(path_repo, path_generated, file_flows)
 path_bike_scrape = os.path.join(dir_data, file_biketimes_raw)
 path_stops = os.path.join(dir_data, file_stops)
+
+path_experiments = os.path.join(path_repo, 'experiment_data')
+path_clustercoeff = os.path.join(path_experiments, 'neighborhood_clustercoeff.csv')

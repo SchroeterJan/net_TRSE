@@ -52,6 +52,10 @@ exclude_stops = {'Centraal Station',
 census_variables = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
                     'BEVTOTAAL', 'SKSES_GEM', 'IHHINK_GEM', 'PREGWERKL_P']
 
+scaling_variables = ['IHHINK_GEM', 'PREGWERKL_P']
+
+model_variables = ['IHHINK_GEM_scaled', 'PREGWERKL_P_scaled', 'BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',]
+
 # limit for Population density in people/km^2
 min_popdens = 100.0
 # year of interest for Census data

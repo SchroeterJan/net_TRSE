@@ -6,15 +6,22 @@ class DataHandling:
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         self.load_data()
+        for var in scaling_variables:
+            self.scale(var)
 
     def load_data(self):
         print("Loading data")
         self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated,'Bike_times_GH.csv'),
+        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'),
                                 sep=';', index_col=0)
         self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'),
                               sep=';', index_col=0)
+
+    def scale(self, variable):
+        max_val = max(self.neighborhood_se[variable])
+        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[variable]]
+        self.neighborhood_se[variable + '_scaled'] = scaled
 
     def build_speed_vector(self, variable, euclid, name):
         speed = []
@@ -23,40 +30,6 @@ class DataHandling:
             speed.append(speed)
 
         pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
-
-    def thresholding(self, variable, largest_extend):
-        variable = np.nan_to_num(x=variable, nan=0.0)
-        largest = np.argsort(variable)[-largest_extend:]
-        for each in largest:
-            if variable[each] == 'nan':
-                continue
-            else:
-                variable[each] = variable[largest[0]]
-        print(' thresholded to ' + str(variable[largest[0]]))
-        return variable
-
-    def threshold_matrix(self, variable, extend, length):
-        matrix = self.Build_Matrix(length=length,
-                                               data_list=np.array(variable))
-        matrix2 = np.triu(matrix, k=0)
-        fastest, fastest_index = Analysis().find_max(matrix2, extend)
-        bins_index = np.bincount(fastest_index).argsort()[-4:][::-1]
-        for each in bins_index:
-            matrix[:, each] = np.nan
-            matrix[each, :] = np.nan
-        matrix = np.triu(matrix, k=1)
-        matrix = matrix.flatten()
-        matrix = np.delete(arr=matrix, obj=np.where(matrix == 0.0))
-        return matrix
-
-    def difference_matrix(self, vector):
-
-        edges = []
-        for i, Buurt_score in enumerate(vector):
-            for j, Buurt_score2 in enumerate(vector[i + 1:]):
-                edges.append(np.absolute(Buurt_score - Buurt_score2))
-
-        return np.array(edges)
 
 
 class Plotting:
@@ -160,7 +133,7 @@ class Plotting:
         plt.show()
 
     def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
-        fig, axes = plt.subplots(shape[0], shape[1])
+        fig, axes = plt.subplots(shape[0], shape[1], figsize=(30, 15))
         #fig.suptitle(suptitle)
         fig.text(0.5, 0.04, xtext, ha='center', va='center')
         fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
