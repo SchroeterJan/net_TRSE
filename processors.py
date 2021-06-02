@@ -36,9 +36,10 @@ class SENeighborhoods:
         geo_ids = set(self.geo_data[column_names['geo_id_col']])
 
         if os.path.isfile(self.path_se):
-            with open(file=self.path_se, mode='r') as se:                                    # open socio-economic data set
+            with open(file=self.path_se, mode='r') as se:               # open socio-economic data set
                 for line in se:
-                    split = line.split(sep=';')
+                    # split columns by seperator and strip "newline"
+                    split = [x.strip() for x in line.split(sep=';')]
                     if split[self.geo_col_ind] in geo_ids and split[self.year_col_ind] == str(year):
                         self.neighborhood_se.append(split)
         else:
@@ -49,9 +50,8 @@ class SENeighborhoods:
         print('Extracting Variable ' + var)
         self.neighborhood_se = np.array(self.neighborhood_se)
         for line in self.neighborhood_se:
-            line_array = [i.strip() for i in line]               # strip to get rid of "newline"
-            if line_array[self.se_var_col_ind] == var:
-                self.geo_data.at[str(line_array[self.geo_col_ind]), var] = line_array[self.se_col_ind]
+            if line[self.se_var_col_ind] == var:
+                self.geo_data.at[str(line[self.geo_col_ind]), var] = line[self.se_col_ind]
 
     def area_polygons(self):
         # form shapely Polygons of all areas
@@ -88,9 +88,15 @@ class SENeighborhoods:
     # filter by population density
     def filter_areas(self):
         print('filter low populated areas')
+        # fill empty cells (white space) with nan
         self.geo_data = self.geo_data.replace(r'^\s*$', np.nan, regex=True)
-        self.geo_data = self.geo_data.fillna(value=0.0)
-        self.geo_data = self.geo_data.astype({column_names['pop_col']: int, self.size_col: float})
+        # self.geo_data = self.geo_data.fillna(value=0.0)
+        # change dtype for calculation
+        self.geo_data[column_names['pop_col']] = pd.to_numeric(self.geo_data[column_names['pop_col']], errors='coerce')
+        self.geo_data[self.size_col] = pd.to_numeric(self.geo_data[self.size_col], errors='coerce')
+        # self.geo_data = self.geo_data.astype({column_names['pop_col']: int, self.size_col: float})
+        # assume missing population data as unpopulated
+        self.geo_data[[column_names['pop_col']]] = self.geo_data[[column_names['pop_col']]].fillna(value=0.0)
         self.geo_data['pop_km2'] = self.geo_data[column_names['pop_col']] / (self.geo_data[self.size_col]/1000000.0)
         self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
 

@@ -16,11 +16,41 @@ if not os.path.isdir(path_plot):
 path_hists = os.path.join(path_plot, 'hists')
 if not os.path.isdir(path_hists):
     os.mkdir(path_hists)
+path_explore = os.path.join(path_plot, 'explore')
+if not os.path.isdir(path_explore):
+    os.mkdir(path_explore)
 path_maps = os.path.join(path_plot, 'maps')
 if not os.path.isdir(path_maps):
     os.mkdir(path_maps)
 
 travel_times = ['Bike', 'Public Transport']
+
+
+def se_year():
+    year_list = range(2015, 2021, 1)
+    empty_list = []
+
+    for year in year_list:
+        se_prep = SENeighborhoods()
+        se_prep.crop_se(year=year)
+        se_prep.geo_data = se_prep.geo_data.set_index(keys=column_names['geo_id_col'], drop=False)
+
+        # keep only relevant socio-economic variables
+        for variable in census_variables:
+            se_prep.extract_var(var=variable)
+
+        se_prep.filter_areas()
+        a = se_prep.geo_data.filter(items=census_variables)
+        b = a.isna().sum().sum()
+        empty_list.append(b)
+
+    plt.figure()
+    plt.bar(x=year_list, height=empty_list)
+    plt.title('Missing Census Data Points per Year')
+    plt.xlabel('Year')
+    plt.ylabel('Total Missing Data Points among Variables')
+    plt.savefig(fname=os.path.join(path_explore, 'missing_data'))
+    plt.close()
 
 
 def hist_modes():
