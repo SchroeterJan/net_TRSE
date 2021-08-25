@@ -8,20 +8,19 @@ def areas():
     # crop socio-economic data to relevant year and areas
     se_prep.crop_se(year=se_year)
     se_prep.geo_data = se_prep.geo_data.set_index(keys=column_names['geo_id_col'], drop=False)
+    se_prep.filter_areas()
 
     # keep only relevant socio-economic variables
     for variable in census_variables:
         se_prep.extract_var(var=variable)
 
-    # filter low populated areas
-    se_prep.filter_areas()
 
-    # write resulting data set to disk
-    print('writing preprocessed data to disk')
     # check if prepared data already exists
     if os.path.isfile(path_neighborhood_se):
         print('removing existing Neighborhood SE Data')
         os.remove(path_neighborhood_se)
+    # write resulting data set to disk
+    print('writing preprocessed data to disk')
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
@@ -49,5 +48,5 @@ def flows():
 
 
 areas()
-flows()
-bike_times()
+# flows()
+# bike_times()

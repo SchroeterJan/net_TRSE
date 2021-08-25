@@ -2,7 +2,7 @@
 dir_data = r'C:\Users\jan.schroeter\Documents\Uni\Thesis\Data\Raw_Data'
 
 # raw data Files
-file_geo = 'GBD_buurt_Actueel.csv'
+file_geo = 'buurten all 2021-08-10 14.48.27.geojson'
 # declare coordinate reference system of the polygon data, if already in epsg:4326 leave None
 crs_proj = 'epsg:28992'
 
@@ -19,7 +19,6 @@ file_stops = 'stop_locations.csv'
 ### CONSTANTS
 # relevant column names
 column_names = {'geo_id_col': 'code',     # column holding area identifier
-                'area_polygon': 'geometrie',  # column holding area polygon wkt
                 'pop_col': 'BEVTOTAAL',         # population
                 'geo_id_se': 'gebiedcode15',    # column in socio-economic data holding area identifier
                 'year_col': 'jaar',             # column holding the corresponding year of a se variable
@@ -49,8 +48,7 @@ exclude_stops = {'Centraal Station',
                  }
 
 # identifiers for relevant census variables
-census_variables = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',
-                    'BEVTOTAAL', 'SKSES_GEM', 'IHHINK_GEM', 'PREGWERKL_P']
+census_variables = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P', 'IHHINK_GEM', 'PREGWERKL_P']
 
 scaling_variables = ['IHHINK_GEM', 'PREGWERKL_P']
 

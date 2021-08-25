@@ -7,23 +7,16 @@ plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
 sns.set_theme(style="ticks")
 
-# handler = DataHandling()
-# plotter = Plotting()
 
-path_plot = os.path.join(path_repo, 'plots')
-if not os.path.isdir(path_plot):
-    os.mkdir(path_plot)
-path_hists = os.path.join(path_plot, 'hists')
-if not os.path.isdir(path_hists):
-    os.mkdir(path_hists)
-path_explore = os.path.join(path_plot, 'explore')
-if not os.path.isdir(path_explore):
-    os.mkdir(path_explore)
-path_maps = os.path.join(path_plot, 'maps')
-if not os.path.isdir(path_maps):
-    os.mkdir(path_maps)
+def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
+    fig, axes = plt.subplots(shape[0], shape[1], figsize=(30, 15))
+    # fig.suptitle(suptitle)
+    fig.text(0.5, 0.04, xtext, ha='center', va='center')
+    fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
+    return fig, axes
 
-travel_times = ['Bike', 'Public Transport']
+
+
 
 
 def se_year():
@@ -35,20 +28,28 @@ def se_year():
         se_prep.crop_se(year=year)
         se_prep.geo_data = se_prep.geo_data.set_index(keys=column_names['geo_id_col'], drop=False)
 
+        se_prep.filter_areas()
+
         # keep only relevant socio-economic variables
         for variable in census_variables:
             se_prep.extract_var(var=variable)
 
-        se_prep.filter_areas()
-        a = se_prep.geo_data.filter(items=census_variables)
+        a = pd.DataFrame(se_prep.geo_data)
+        a = a.filter(items=census_variables)
+        a = a.apply(pd.to_numeric)
         b = a.isna().sum().sum()
-        empty_list.append(b)
+        if len(a.columns) < 5:
+            print('missing variable')
+            empty_list.append(b + (5 - len(a.columns))*401)
+        else:
+            empty_list.append(b)
 
-    plt.figure()
-    plt.bar(x=year_list, height=empty_list)
-    plt.title('Missing Census Data Points per Year')
-    plt.xlabel('Year')
-    plt.ylabel('Total Missing Data Points among Variables')
+    fig, ax = plt.subplots()
+    bars = ax.bar(x=year_list, height=empty_list)
+    ax.set_title('Missing Census Data Points per Year')
+    ax.set_xlabel('Year')
+    ax.set_ylabel('Total Missing Data Points among Variables')
+    ax.bar_label(bars, label_type='center')
     plt.savefig(fname=os.path.join(path_explore, 'missing_data'))
     plt.close()
 
@@ -89,7 +90,7 @@ def hist_flows():
 
 def hist_se():
     for variable in census_variables:
-        f, ax = plt.subplots(figsize=(15, 9))
+        f, ax = plt.subplots(figsize=(7, 5))
         sns.despine(f)
 
         handler.neighborhood_se[variable] = handler.neighborhood_se[variable].replace(to_replace=0.0, value=np.nan)
@@ -103,12 +104,9 @@ def hist_se():
 
 def hist_scaled_se():
     for variable in scaling_variables:
-        f, ax = plt.subplots(figsize=(15, 9))
+        f, ax = plt.subplots(figsize=(7, 5))
         sns.despine(f)
-
-        handler.neighborhood_se[variable + '_scaled'] = handler.neighborhood_se[variable + '_scaled'].replace(
-            to_replace=0.0, value=np.nan)
-        sns.histplot(data=handler.neighborhood_se, x=variable)
+        sns.histplot(data=handler.neighborhood_se, x=variable + '_scaled')
         ax.set_title('Histogram of ' + variable + '_scaled')
         ax.margins(x=0)
         plt.tight_layout()
@@ -138,9 +136,9 @@ def hist_cluster():
 
 def geo_plot():
     geo_frame = geopandas.GeoDataFrame(crs="EPSG:4326",
-                                       geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometrie))
+                                       geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
 
-    fig, axes = plotter.multi_plot(shape=[2, 3])
+    fig, axes = multi_plot(shape=[2, 3])
     axes = axes.flatten()
     reduce_se_variables()
     for i, each in enumerate(census_variables):
@@ -171,24 +169,44 @@ def plot_adj_mat():
     comp = skat.tree_patitioning()
 
     fig, ax = plt.subplots(figsize=(20, 15))
-    skat.geo_df.plot(ax=ax, column='clust')
-    # nx.drawing.nx_pylab.draw_networkx_edges(G=mst_graph, pos=skat.pos, ax=ax)
+    skat.geo_df.plot(ax=ax)
+    # nx.drawing.nx_pylab.draw_networkx_edges(G=comp, pos=skat.pos, ax=ax)
 
     for component in comp:
         nx.drawing.nx_pylab.draw_networkx_edges(G=component, pos=skat.pos, ax=ax)
     plt.show()
-    for i in range(10):
+    plt.close(fig=fig)
+    for i in range(16):
         a = list(comp[i].nodes())
         for node in a:
             skat.geo_df.at[node, 'clust'] = i
+    fig, ax = plt.subplots(figsize=(20, 15))
+    skat.geo_df.plot(ax=ax, column='clust')
+    plt.show()
+    a =10
 
 
-    a = 10
+
+path_plot = os.path.join(path_repo, 'plots')
+if not os.path.isdir(path_plot):
+    os.mkdir(path_plot)
+path_hists = os.path.join(path_plot, 'hists')
+if not os.path.isdir(path_hists):
+    os.mkdir(path_hists)
+path_explore = os.path.join(path_plot, 'explore')
+if not os.path.isdir(path_explore):
+    os.mkdir(path_explore)
+path_maps = os.path.join(path_plot, 'maps')
+if not os.path.isdir(path_maps):
+    os.mkdir(path_maps)
+
+travel_times = ['Bike', 'Public Transport']
 
 
-
+se_year()
 # hist_modes()
 # hist_flows()
+# hist_se()
 # hist_scaled_se()
 
 # clusters = get_cluster()
@@ -197,3 +215,15 @@ def plot_adj_mat():
 # geo_plot()
 # plot_se_kmean()
 plot_adj_mat()
+
+
+def test():
+    geo_frame = geopandas.GeoDataFrame(crs="EPSG:4326",
+                                       geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+    geo_frame['pop'] = handler.neighborhood_se['BEVTOTAAL']
+    geo_frame['empty'] = pd.isnull(geo_frame['pop'])
+    geo_frame.plot(aspect=1, column='empty')
+    a=1
+
+
+#test()

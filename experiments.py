@@ -6,7 +6,6 @@ from config import *
 handler = DataHandling()
 analyzer = Analysis(handler=handler)
 
-
 # declare new path for experiment data
 if not os.path.isdir(path_experiments):
     os.mkdir(path_experiments)
@@ -89,29 +88,18 @@ def get_cluster():
     return clusters
 
 
-def se_kmean():
-    reduce_se_variables()
-    se = np.array(handler.neighborhood_se[census_variables])
-    se_kmean = KMeans(n_clusters=6, random_state=0).fit(se)
-    se_clust = se_kmean.labels_
-    geo_frame = geopandas.GeoDataFrame(crs="EPSG:4326",
-                                       geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometrie))
-    geo_frame['clust'] = se_clust
-    return geo_frame
-
-
 class Skater:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         # areas into geopandas DataFrame
-        self.geo_df = geopandas.GeoDataFrame(crs="EPSG:4326",
-                                             geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometrie))
-        self.geo_df['centroid'] = geopandas.GeoSeries.from_wkt(handler.neighborhood_se['centroid'])
-        self.geo_df['lon'] = self.geo_df['centroid'].apply(lambda p: p.x)
-        self.geo_df['lat'] = self.geo_df['centroid'].apply(lambda p: p.y)
+        self.geo_df = geopandas.GeoDataFrame(crs=crs_proj,
+                                             geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+        # self.geo_df['lon'] = self.geo_df['centroid'].apply(lambda p: p.x)
+        # self.geo_df['lat'] = self.geo_df['centroid'].apply(lambda p: p.y)
 
         self.pos = {}
+        self.adj_g = []
         self.geo_pos()
 
         # create DataFrame containing relevant socio-economic variables for the model
@@ -119,42 +107,29 @@ class Skater:
 
     def geo_pos(self):
         # get positions of nodes to make the graph spatial
-        for count, elem in enumerate(np.array(self.geo_df[['lon', 'lat']])):
-            self.pos[self.geo_df.index[count]] = (elem[0], elem[1])
+        for count, elem in enumerate(np.array(self.geo_df.centroid)):
+            self.pos[self.geo_df.index[count]] = (elem.x, elem.y)
 
-    def adjacency_graph(self):
-        # create adjacency matrix for all areas
-        mat = np.invert(np.array([self.geo_df.geometry.disjoint(pol) for pol in self.geo_df.geometry]))
-        # correct for self-loops
-        np.fill_diagonal(a=mat, val=False)
-        # boolean matrix into networkx graph
-        adj_g = nx.convert_matrix.from_numpy_array(A=mat)
-        # dict index and name of areas
-        area_dict = {}
-        for i, area in enumerate(np.array(self.geo_df.index)):
-            area_dict[i] = area
-        # relabel nodes to area identifier
-        adj_g = nx.relabel.relabel_nodes(G=adj_g, mapping=area_dict)
-
+    def remove_islands(self):
         # connect spatially disconnected subgraphs
         # find connected components of the graph and create subgraphs
-        S = [adj_g.subgraph(c).copy() for c in nx.connected_components(adj_g)]
+        S = [self.adj_g.subgraph(c).copy() for c in nx.connected_components(self.adj_g)]
         # only connect if there are disconnected subgraphs
-        if len(S) != 1:
+        while len(S) != 1:
             # get index of largest connected component
             largest_cc = np.argmax([len(graph.nodes()) for graph in S])
             # iterate over subgraphs except the largest component
-            for subgraph in S[:largest_cc] + S[largest_cc+1:]:
+            for subgraph in S[:largest_cc] + S[largest_cc + 1:]:
                 subgraph_dist = []
                 # declare space of possible connection by considering all nodes outside the current subgraph
-                candidate_space = adj_g.copy()
+                candidate_space = self.adj_g.copy()
                 candidate_space.remove_nodes_from(subgraph.nodes())
                 # determine number of connections by fraction of subgraph size
-                no_connections = math.ceil(len(subgraph.nodes())/5)
+                no_connections = math.ceil(len(subgraph.nodes()) / 3)
                 for node in subgraph.nodes():
                     # get list of dictionaries with the connected point outside the subgraph as key and distance as value
                     node_dist_dicts = [{dest_point: Point(self.pos[dest_point]).distance(Point(self.pos[node]))}
-                                 for dest_point in candidate_space.nodes()]
+                                       for dest_point in candidate_space.nodes()]
                     # flatten value list
                     dist_list = [list(dict.values()) for dict in node_dist_dicts]
                     dist_list = np.array([item for sublist in dist_list for item in sublist])
@@ -165,26 +140,48 @@ class Skater:
                                               np.fromiter(node_dist_dicts[dist_ind].keys(), dtype='U4'),
                                               np.fromiter(node_dist_dicts[dist_ind].values(), dtype=float)])
                 min_dist_ind = np.argsort(np.array(subgraph_dist, dtype=object)[:, 2])[:no_connections]
+                # add edge to connect disconnected subgraphs
                 for ind in min_dist_ind:
-                    adj_g.add_edge(u_of_edge=subgraph_dist[ind][0],
-                               v_of_edge=subgraph_dist[ind][1][0],
-                               cost=subgraph_dist[ind][2][0])
-        return adj_g
+                    self.adj_g.add_edge(u_of_edge=subgraph_dist[ind][0],
+                                   v_of_edge=subgraph_dist[ind][1][0],
+                                   cost=subgraph_dist[ind][2][0])
+            S = [self.adj_g.subgraph(c).copy() for c in nx.connected_components(self.adj_g)]
+
+    def adjacency_graph(self):
+        # create adjacency matrix for all areas
+
+        # check for invalid polygons and apply simple fix according to https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
+        for i, pol in enumerate(self.geo_df.geometry):
+            if not pol.is_valid:
+                self.geo_df.geometry[i] = pol.buffer(0)
+
+        mat = np.invert(np.array([self.geo_df.geometry.disjoint(pol) for pol in self.geo_df.geometry]))
+        # correct for self-loops
+        np.fill_diagonal(a=mat, val=False)
+        # boolean matrix into networkx graph
+        self.adj_g = nx.convert_matrix.from_numpy_array(A=mat)
+        # dict index and name of areas
+        area_dict = {}
+        for i, area in enumerate(np.array(self.geo_df.index)):
+            area_dict[i] = area
+        # relabel nodes to area identifier
+        self.adj_g = nx.relabel.relabel_nodes(G=self.adj_g, mapping=area_dict)
+        self.remove_islands()
+
 
     # Minimal Spanning Tree Clustering according to https://doi.org/10.1080/13658810600665111
     def mst(self):
         print('Create MST')
         # get adjacency graph
-        graph = self.adjacency_graph()
+        self.adjacency_graph()
 
         # iterate over all graph edges to assign a cost
-        for u, v in graph.edges():
+        for u, v in self.adj_g.edges():
             # euclidean distance between attribute vectors
-            dist = sum([(np.array(self.model_df.loc[u])[col] - np.array(self.model_df.loc[v])[col])**2
-                        for col in range(len(self.model_df.columns.values))])
-            graph[u][v]['cost'] = dist
+            dist = np.nansum([(self.model_df.loc[u][col] - self.model_df.loc[v][col])**2 for col in range(len(self.model_df.columns.values))])
+            self.adj_g[u][v]['cost'] = dist
 
-        mst = nx.algorithms.tree.mst.minimum_spanning_tree(G=graph, weight='cost', algorithm='prim')
+        mst = nx.algorithms.tree.mst.minimum_spanning_tree(G=self.adj_g, weight='cost', algorithm='prim')
         """    
         # MST generation
         v_1 = np.random.randint(low=0, high=len(model_df))
@@ -212,7 +209,7 @@ class Skater:
         # iterate over nodes in tree k
         for i in list(k.nodes()):
             # add SD of each node in tree k to SSD
-            ssd_k += sum([(x.loc[i][j] - attributes_av[j]) ** 2 for j in range(len(x.columns))])
+            ssd_k += np.nansum([(x.loc[i][j] - attributes_av[j]) ** 2 for j in range(len(x.columns))])
         return ssd_k
 
     # objective function 1 and balancing function
@@ -241,7 +238,7 @@ class Skater:
         for clust in range(15):
             best_edges = []
             best_edges_values = []
-            print('Form new cluster')
+            print('Test component for split')
             for t in components:
                 # get all possible solutions for finding the starting vertice by iteration over all edges of the MST
                 s_p_1 = self.potential_solution(edges=t.edges(), graph=t)
@@ -286,6 +283,8 @@ class Skater:
 
                     # Step 4
                     next = list(list_l.keys())[np.argmin(list(list_l.values()))]
+                    if next in set(edges_expanded):
+                        print('something is weird')
                     edges_expanded.append(next)
                     del list_l[next]
                     s_p_edges = list(set(list(t.edges(next[0])) + list(t.edges(next[1]))) - set(edges_expanded))

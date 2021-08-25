@@ -4,23 +4,23 @@ from Routing import *
 
 class SENeighborhoods:
     # set up DataFrame for socio-economic variables
-    neighborhood_se = []
+
 
     # Initialize class
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
+        self.neighborhood_se = []
         self.path_se = os.path.join(dir_data, file_se)
-        self.path_geo = os.path.join(dir_data, file_geo)
+        self.path_geo = os.path.join(dir_data,file_geo)
 
         # load geographic data set if found
         if os.path.isfile(self.path_geo):
             print('loading geo data of the city')
-            self.geo_data = pd.read_csv(filepath_or_buffer=self.path_geo, sep=';')
+            self.geo_data = geopandas.read_file(self.path_geo)
         else:
             print('ERROR - No geographic data found at: ' + self.path_geo)
 
-        self.size_col = 'size'
-        self.area_polygons()
+        self.geo_data['area'] = self.geo_data['geometry'].area / 10 ** 6
 
         header = open(file=self.path_se, mode='r').readline()
         header = np.array([i.strip() for i in header.split(sep=';')])
@@ -30,17 +30,17 @@ class SENeighborhoods:
         self.se_col_ind = np.where(header == column_names['se_col'])[0][0]
         self.neighborhood_se.append(header.tolist())
 
+
+
     # crop socio-economic data according to geographic data
     def crop_se(self, year):
         print('cropping socio-economic data')
-        geo_ids = set(self.geo_data[column_names['geo_id_col']])
-
         if os.path.isfile(self.path_se):
             with open(file=self.path_se, mode='r') as se:               # open socio-economic data set
                 for line in se:
                     # split columns by seperator and strip "newline"
                     split = [x.strip() for x in line.split(sep=';')]
-                    if split[self.geo_col_ind] in geo_ids and split[self.year_col_ind] == str(year):
+                    if split[self.year_col_ind] == str(year):
                         self.neighborhood_se.append(split)
         else:
             print('ERROR - No socio-economic data found at: ' + self.path_se)
@@ -49,56 +49,18 @@ class SENeighborhoods:
     def extract_var(self, var):
         print('Extracting Variable ' + var)
         self.neighborhood_se = np.array(self.neighborhood_se)
+        geo_ids = set(self.geo_data[column_names['geo_id_col']])
         for line in self.neighborhood_se:
-            if line[self.se_var_col_ind] == var:
+            if line[self.se_var_col_ind] == var and line[self.geo_col_ind] in geo_ids:
                 self.geo_data.at[str(line[self.geo_col_ind]), var] = line[self.se_col_ind]
 
-    def area_polygons(self):
-        # form shapely Polygons of all areas
-        area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
-                         in self.geo_data[column_names['area_polygon']]]
-        area_polygons = geopandas.GeoSeries(area_polygons)
-        self.geo_data[self.size_col] = [poly.area for poly in area_polygons]
-
-        if crs_proj != None:
-            # transform polygon coordinates to geodetic lon/lat coordinates
-            area_polygons_new = []
-            crs_out = 'epsg:4326'
-            proj = Transformer.from_crs(crs_proj, crs_out)
-            for each in area_polygons:
-                x, y = each.exterior.coords.xy
-                polygon = []
-                for each in zip(x, y):
-                    lng_, lat_ = proj.transform(each[0], each[1])
-                    polygon.append((lat_, lng_))
-                area_polygons_new.append(Polygon(polygon))
-            area_polygons = geopandas.GeoSeries(area_polygons_new)
-
-        elif crs_proj == "":
-            print("Polygon coordinates given in espg:4326")
-        else:
-            print('Geographic system is wrongly defined')
-
-
-        # updating area polygons in data set
-        self.geo_data[column_names['area_polygon']] = area_polygons
-        # adding area centroids to data set
-        self.geo_data['centroid'] = [P.centroid for P in area_polygons]
-
-    # filter by population density
     def filter_areas(self):
-        print('filter low populated areas')
-        # fill empty cells (white space) with nan
-        self.geo_data = self.geo_data.replace(r'^\s*$', np.nan, regex=True)
-        # self.geo_data = self.geo_data.fillna(value=0.0)
-        # change dtype for calculation
-        self.geo_data[column_names['pop_col']] = pd.to_numeric(self.geo_data[column_names['pop_col']], errors='coerce')
-        self.geo_data[self.size_col] = pd.to_numeric(self.geo_data[self.size_col], errors='coerce')
-        # self.geo_data = self.geo_data.astype({column_names['pop_col']: int, self.size_col: float})
-        # assume missing population data as unpopulated
-        self.geo_data[[column_names['pop_col']]] = self.geo_data[[column_names['pop_col']]].fillna(value=0.0)
-        self.geo_data['pop_km2'] = self.geo_data[column_names['pop_col']] / (self.geo_data[self.size_col]/1000000.0)
-        self.geo_data = self.geo_data[self.geo_data['pop_km2'] > min_popdens]
+        # get population of areas
+        self.extract_var(var=column_names['pop_col'])
+        # calculate population per square kilometer
+        self.geo_data['pop_area'] = pd.to_numeric(self.geo_data['BEVTOTAAL']) / self.geo_data['area']
+        # filter for populated areas (over 150 people per square kilometer)
+        self.geo_data = self.geo_data[self.geo_data['pop_area'] > 150]
 
 
 class PassengerCounts:
@@ -142,12 +104,19 @@ class PassengerCounts:
         stop_points = [Point(float(lng), float(lat)) for lng, lat in zip(
             self.stops[column_names['stop_lng']],
             self.stops[column_names['stop_lat']])]
-        stop_points = geopandas.GeoSeries(stop_points)
+        stop_points = geopandas.GeoSeries(stop_points, crs='epsg:4326')
 
         # reload areas into shapely/geopandas
         area_polygons = [shapely.wkt.loads(area_polygon) for area_polygon
-                         in self.neighborhood_se[column_names['area_polygon']]]
-        area_polygons = geopandas.GeoSeries(area_polygons)
+                         in self.neighborhood_se['geometry']]
+        area_polygons = geopandas.GeoSeries(area_polygons, crs=crs_proj)
+
+        if crs_proj != None:
+            stop_points = stop_points.to_crs(crs_proj)
+        elif crs_proj == "":
+            print("Polygon coordinates given in espg:4326")
+        else:
+            print('Geographic system is wrongly defined')
 
         # distance Matrix of all stops (Points) and areas (Polygons)
         stops_area_distance_matrix = \
