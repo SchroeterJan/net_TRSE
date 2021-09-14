@@ -16,12 +16,10 @@ def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
     return fig, axes
 
 
-
-
-
 def se_year():
     year_list = range(2015, 2021, 1)
     empty_list = []
+    full_years = []
 
     for year in year_list:
         se_prep = SENeighborhoods()
@@ -40,12 +38,12 @@ def se_year():
         b = a.isna().sum().sum()
         if len(a.columns) < 5:
             print('missing variable')
-            empty_list.append(b + (5 - len(a.columns))*401)
         else:
+            full_years.append(int(year))
             empty_list.append(b)
 
     fig, ax = plt.subplots()
-    bars = ax.bar(x=year_list, height=empty_list)
+    bars = ax.bar(x=full_years, height=empty_list, align='center', tick_label=full_years)
     ax.set_title('Missing Census Data Points per Year')
     ax.set_xlabel('Year')
     ax.set_ylabel('Total Missing Data Points among Variables')
