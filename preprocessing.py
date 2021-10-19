@@ -24,14 +24,18 @@ def areas():
     se_prep.geo_data.to_csv(path_or_buf=path_neighborhood_se, index=True, index_label='Buurt_code', sep=';')
 
 
-def bike_times():
+def od_matrices():
+    matrix_files = [path_bike_matrix, path_otp_matrix, path_euclid_matrix]
     trans_prep = TransportPrep()
-    if not os.path.isfile(path_bike_scrape):
-        print('Gather bike times\n Make sure GH server is running!')
-        trans_prep.get_gh_times()
+    matrices = [build_matrix(length=len(trans_prep.neighborhood_se[column_names['geo_id_col']]),
+                             data_list=list(trans_prep.load_data(path_bike_scrape)['DURATION'] / 1000.0)),
+                build_matrix(length=len(trans_prep.neighborhood_se[column_names['geo_id_col']]),
+                             data_list=list(trans_prep.load_data(path_otp_scrape)['DURATION'])),
+                trans_prep.calc_euclid()]
 
-    bike_time = trans_prep.order_times()
-    bike_time.to_csv(path_or_buf=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'), sep=';')
+    for i, matrix in enumerate(matrices):
+        matrix = trans_prep.form_matrix(matrix)
+        matrix.to_csv(path_or_buf=matrix_files[i], sep=';')
 
 
 def flows():
@@ -47,6 +51,9 @@ def flows():
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
-areas()
+
+
+
+# areas()
 # flows()
-# bike_times()
+od_matrices()

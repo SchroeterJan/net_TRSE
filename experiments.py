@@ -1,6 +1,4 @@
 from Classes import *
-from processors import *
-from config import *
 
 # Class objects
 handler = DataHandling()
@@ -86,6 +84,9 @@ def get_cluster():
         cluster_rel()
         clusters.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
     return clusters
+
+
+
 
 
 class Skater:

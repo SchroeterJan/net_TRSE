@@ -1,4 +1,4 @@
-from config import *
+from processors import *
 
 
 class DataHandling:
@@ -13,10 +13,14 @@ class DataHandling:
         print("Loading data")
         self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'Bike_times_GH.csv'),
+        self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix,
                                 sep=';', index_col=0)
-        self.pt = pd.read_csv(filepath_or_buffer=os.path.join(path_repo, path_generated, 'PT_times.csv'),
+        self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix,
                               sep=';', index_col=0)
+        self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix,
+                               sep=';', index_col=0)
+        self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix,
+                                  sep=';', index_col=0)
 
     def scale(self, variable):
         max_val = max(self.neighborhood_se[variable])
@@ -31,16 +35,32 @@ class DataHandling:
 
         pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
 
+    def reduce_matrix(self, frame):
+        frame = np.triu(m=frame.to_numpy(), k=0)
+        frame[frame == 0] = np.nan
+        return frame
+
 
 class Plotting:
-    plt.style.use('seaborn')  # pretty matplotlib plots
-    plt.rc('font', size=24)
-    path_plot = os.path.join(path_repo, 'plots')
-    path_hists = os.path.join(path_plot, 'hists')
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        sns.set(rc={"figure.figsize": (14, 18)}, font_scale=2.0)
+
+    def meanline(self, data, variable, x=1):
+        plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
+        min_ylim, max_ylim = plt.ylim()
+        plt.text(data[variable].mean() * 1.1,
+                 max_ylim * (1 - 0.1 * x),
+                 'Mean: {:.2f}'.format(data[variable].mean()))
+
+    def geo_plot(self, geo_frame, graph):
+        pos = {}
+        for count, elem in enumerate(np.array(geo_frame.centroid)):
+            pos[geo_frame.index[count]] = (elem.x, elem.y)
+        fig, ax = plt.subplots(figsize=(20, 15))
+        geo_frame.plot(ax=ax)
+        nx.drawing.nx_pylab.draw_networkx_edges(G=graph, pos=pos, ax=ax)
+
 
     def correlation_heatmap(self, df):
         print("Plotting Correlation Heatmap of given DataFrame")

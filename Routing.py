@@ -1,33 +1,23 @@
 from config import *
 
 
-
-
 class OTP_grabber:
     # Constants
     Buurten_PC6 = 'Buurten_PC6.csv'
-    OTP_times = 'OTP_times.csv'
-
     OTP_SERVER_URL = "http://localhost:8080/"
     META = "otp/routers/"
     PLAN = "default/plan"
 
-
     def __init__(self):
         print("Connecting to " + self.__class__.__name__)
-        self.path_OTPtimes = os.path.join(dir_data, self.OTP_times)
         router_ID = json.loads(rq.get(self.OTP_SERVER_URL + self.META).text)['routerInfo'][0]['routerId']
         print('Router ID: ' + router_ID)
-        self.loadBuurtPC6()
-
-
-
 
     def planner(self):
-        if os.path.isfile(self.path_OTPtimes):
+        if os.path.isfile(path_otp_scrape):
             print('removing existing OTP times')
-            os.remove(self.path_OTPtimes)
-        with open(file=self.path_OTPtimes, mode='w') as OTPtimes:
+            os.remove(path_otp_scrape)
+        with open(file=path_otp_scrape, mode='w') as OTPtimes:
             OTPtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,WALK_TIME,WALK_DIST,TRANSIT_TIME,TRANSFERS\n')
             for i, or_row in enumerate(BuurtPC6[:, 2:]):
                 for j, dest_row in enumerate(BuurtPC6[i+1:, 2:]):
@@ -136,8 +126,8 @@ class GH_grabber:
 
 BuurtPC6 = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, file_locations), sep=';').to_numpy()
 
-# otp_grab = OTP_grabber()
-# otp_grab.planner()
+otp_grab = OTP_grabber()
+otp_grab.planner()
 
 
 grabber = GH_grabber()

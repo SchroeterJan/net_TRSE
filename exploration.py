@@ -1,11 +1,7 @@
-from Classes import *
-from config import *
-from experiments import *
+from plots import *
 
 
-plt.style.use('seaborn')  # pretty matplotlib plots
-plt.rc('font', size=24)
-sns.set_theme(style="ticks")
+travel_times = ['Bike', 'Public Transport']
 
 
 def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
@@ -18,10 +14,11 @@ def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
 
 def se_year():
     year_list = range(2015, 2021, 1)
+    table = np.empty(shape=(len(year_list), len(census_variables)))
     empty_list = []
     full_years = []
 
-    for year in year_list:
+    for i, year in enumerate(year_list):
         se_prep = SENeighborhoods()
         se_prep.crop_se(year=year)
         se_prep.geo_data = se_prep.geo_data.set_index(keys=column_names['geo_id_col'], drop=False)
@@ -32,84 +29,51 @@ def se_year():
         for variable in census_variables:
             se_prep.extract_var(var=variable)
 
-        a = pd.DataFrame(se_prep.geo_data)
-        a = a.filter(items=census_variables)
-        a = a.apply(pd.to_numeric)
-        b = a.isna().sum().sum()
-        if len(a.columns) < 5:
-            print('missing variable')
-        else:
-            full_years.append(int(year))
-            empty_list.append(b)
-
-    fig, ax = plt.subplots()
-    bars = ax.bar(x=full_years, height=empty_list, align='center', tick_label=full_years)
-    ax.set_title('Missing Census Data Points per Year')
-    ax.set_xlabel('Year')
-    ax.set_ylabel('Total Missing Data Points among Variables')
-    ax.bar_label(bars, label_type='center')
-    plt.savefig(fname=os.path.join(path_explore, 'missing_data'))
-    plt.close()
+        missing = pd.DataFrame(se_prep.geo_data)
+        missing = missing.filter(items=census_variables)
+        missing = missing.apply(pd.to_numeric)
+        table[i] = missing.isna().sum()
+        # if len(missing.columns) < 5:
+        #     print('missing variable')
+        # else:
+        #     full_years.append(int(year))
+        #     empty_list.append(b)
+    frame = pd.DataFrame(data=table, index=year_list, columns=census_variables)
+    frame['Total'] = frame.sum(axis=1)
+    print(frame.to_latex(index=True))
+    # se_year_miss(data=full_years, height=empty_list, labels=full_years)
 
 
-def hist_modes():
-    edges_flat = pd.DataFrame(columns=travel_times)
-    edges_flat[travel_times[0]] = handler.bike.values.flatten()
-    edges_flat[travel_times[1]] = handler.pt.values.flatten()
+def filter_shorttrips():
+    walked = handler.reduce_matrix(frame=handler.euclid)
+    walked = np.where(walked < short_trip)
+    walked_graph = nx.Graph()
+    index_list = list(handler.neighborhood_se.index)
+    reduced_otp = handler.reduce_matrix(frame=handler.otp)
+    reduced_pt = handler.reduce_matrix(frame=handler.pt)
+    for i, or_ind in enumerate(walked[0]):
+        dest_ind = walked[1][i]
+        walked_graph.add_edge(u_of_edge=index_list[or_ind], v_of_edge=index_list[dest_ind])
+        reduced_pt[or_ind][dest_ind] = np.nan
+        reduced_otp[or_ind][dest_ind] = np.nan
 
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
+    a = reduced_otp / 60.0
+    for i, row in enumerate(a[0]):
+        for j, col in enumerate(a[i]):
+            try:
+                a[i][j] = math.ceil(col)
+            except:
+                pass
+    b = a - reduced_otp
+    b = a - reduced_pt
+    b = np.abs(b)
+    c = b / reduced_pt
+    a = 10
 
-    colors = {'Bike': 'red', 'Public Transport': 'blue'}
-
-    for mode in travel_times:
-        sns.histplot(data=edges_flat, x=mode, binwidth=60, color=colors[mode], label=mode, alpha=0.5)
-    ax.set_title('Travel time histogram')
-    ax.margins(x=0)
-    plt.tight_layout()
-    plt.legend()
-
-    plt.savefig(fname=os.path.join(path_hists, 'travel_times'))
-    plt.close(f)
-
-
-def hist_flows():
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
-
-    sns.histplot(data=pd.DataFrame(data=handler.flows.values.flatten(), columns=['values']), log_scale=True)
-    ax.set_title('Passenger flow histogram')
-    ax.margins(x=0)
-    plt.tight_layout()
-    plt.xlabel('Travellers on between two areas')
-    plt.savefig(fname=os.path.join(path_hists, 'flow'))
-    plt.close(f)
-
-
-def hist_se():
-    for variable in census_variables:
-        f, ax = plt.subplots(figsize=(7, 5))
-        sns.despine(f)
-
-        handler.neighborhood_se[variable] = handler.neighborhood_se[variable].replace(to_replace=0.0, value=np.nan)
-        sns.histplot(data=handler.neighborhood_se, x=variable)
-        ax.set_title('Histogram of ' + variable)
-        ax.margins(x=0)
-        plt.tight_layout()
-        plt.savefig(fname=os.path.join(path_hists, variable + '_hist'))
-        plt.close(f)
-
-
-def hist_scaled_se():
-    for variable in scaling_variables:
-        f, ax = plt.subplots(figsize=(7, 5))
-        sns.despine(f)
-        sns.histplot(data=handler.neighborhood_se, x=variable + '_scaled')
-        ax.set_title('Histogram of ' + variable + '_scaled')
-        ax.margins(x=0)
-        plt.tight_layout()
-        plt.savefig(fname=os.path.join(path_hists, variable + '_scaled_hist'))
-        plt.close(f)
+    geo_df = geopandas.GeoDataFrame(crs=crs_proj,
+                                    geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+    plotting.geo_plot(geo_frame=geo_df, graph=walked_graph)
+    a=1
 
 
 def hist_cluster():
@@ -184,25 +148,13 @@ def plot_adj_mat():
     a =10
 
 
-
-path_plot = os.path.join(path_repo, 'plots')
-if not os.path.isdir(path_plot):
-    os.mkdir(path_plot)
-path_hists = os.path.join(path_plot, 'hists')
-if not os.path.isdir(path_hists):
-    os.mkdir(path_hists)
-path_explore = os.path.join(path_plot, 'explore')
-if not os.path.isdir(path_explore):
-    os.mkdir(path_explore)
-path_maps = os.path.join(path_plot, 'maps')
-if not os.path.isdir(path_maps):
-    os.mkdir(path_maps)
-
-travel_times = ['Bike', 'Public Transport']
+# se_year()
+filter_shorttrips()
 
 
-se_year()
-# hist_modes()
+
+
+# hist_modes(travel_times)
 # hist_flows()
 # hist_se()
 # hist_scaled_se()
@@ -210,7 +162,7 @@ se_year()
 # clusters = get_cluster()
 # hist_cluster()
 
-# geo_plot()
+geo_plot()
 # plot_se_kmean()
 plot_adj_mat()
 

@@ -57,7 +57,9 @@ model_variables = ['IHHINK_GEM_scaled', 'PREGWERKL_P_scaled', 'BEVOPLLAAG_P', 'B
 # limit for Population density in people/km^2
 min_popdens = 150.0
 # year of interest for Census data
-se_year = 2017
+se_year = 2018
 # proximity definition in coordinate distance
 proximity = 0.0005
 range_factor = 0.1
+# maximum definition of a short trip in meters
+short_trip = 700.0
