@@ -1,5 +1,5 @@
 # declare paths to raw data
-dir_data = r'C:\Users\jan.schroeter\Documents\Uni\Thesis\Data\Raw_Data'
+dir_data = r'C:\Users\jan.schroeter\Documents\Privat\Uni\Thesis\Data\Raw_Data'
 
 # raw data Files
 file_geo = 'buurten all 2021-08-10 14.48.27.geojson'
@@ -34,7 +34,7 @@ column_names = {'geo_id_col': 'code',     # column holding area identifier
 
 # Declare actual Train Stations allowing to switch to regional transport (source:
 # https://en.wikipedia.org/wiki/List_of_railway_stations_in_Amsterdam)
-exclude_stops = {'Centraal Station',
+exclude_stops = ['Centraal Station',
                  'Station Sloterdijk',
                  'Station Lelylaan',
                  'Station Zuid',
@@ -45,7 +45,7 @@ exclude_stops = {'Centraal Station',
                  'Station Science Park',
                  'Station Holendrecht',
                  'Station Duivendrecht'
-                 }
+                 ]
 
 # identifiers for relevant census variables
 census_variables = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P', 'IHHINK_GEM', 'PREGWERKL_P']
@@ -62,4 +62,4 @@ se_year = 2018
 proximity = 0.0005
 range_factor = 0.1
 # maximum definition of a short trip in meters
-short_trip = 700.0
+short_trip = 500.0

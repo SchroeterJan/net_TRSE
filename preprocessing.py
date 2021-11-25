@@ -44,10 +44,10 @@ def flows():
     flow_prep.filter_connections()
     area_flow_matrix = flow_prep.assign_passcounts()
 
-    print('Writing flow matrix to disk')
     if os.path.isfile(path_flows):
         print('removing existing flow Data')
         os.remove(path_flows)
+    print('Writing flow matrix to disk')
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
@@ -55,5 +55,5 @@ def flows():
 
 
 # areas()
-# flows()
+flows()
 od_matrices()

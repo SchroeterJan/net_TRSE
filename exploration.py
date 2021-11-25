@@ -1,22 +1,12 @@
-from plots import *
+from plotting.plots import *
 
 
 travel_times = ['Bike', 'Public Transport']
 
 
-def multi_plot(self, shape, suptitle='', ytext='', xtext=''):
-    fig, axes = plt.subplots(shape[0], shape[1], figsize=(30, 15))
-    # fig.suptitle(suptitle)
-    fig.text(0.5, 0.04, xtext, ha='center', va='center')
-    fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
-    return fig, axes
-
-
 def se_year():
     year_list = range(2015, 2021, 1)
     table = np.empty(shape=(len(year_list), len(census_variables)))
-    empty_list = []
-    full_years = []
 
     for i, year in enumerate(year_list):
         se_prep = SENeighborhoods()
@@ -33,11 +23,7 @@ def se_year():
         missing = missing.filter(items=census_variables)
         missing = missing.apply(pd.to_numeric)
         table[i] = missing.isna().sum()
-        # if len(missing.columns) < 5:
-        #     print('missing variable')
-        # else:
-        #     full_years.append(int(year))
-        #     empty_list.append(b)
+
     frame = pd.DataFrame(data=table, index=year_list, columns=census_variables)
     frame['Total'] = frame.sum(axis=1)
     print(frame.to_latex(index=True))
@@ -51,28 +37,39 @@ def filter_shorttrips():
     index_list = list(handler.neighborhood_se.index)
     reduced_otp = handler.reduce_matrix(frame=handler.otp)
     reduced_pt = handler.reduce_matrix(frame=handler.pt)
+    reduced_bike = handler.reduce_matrix(frame=handler.bike)
     for i, or_ind in enumerate(walked[0]):
         dest_ind = walked[1][i]
         walked_graph.add_edge(u_of_edge=index_list[or_ind], v_of_edge=index_list[dest_ind])
         reduced_pt[or_ind][dest_ind] = np.nan
         reduced_otp[or_ind][dest_ind] = np.nan
+        reduced_bike[or_ind][dest_ind] = np.nan
 
-    a = reduced_otp / 60.0
-    for i, row in enumerate(a[0]):
-        for j, col in enumerate(a[i]):
-            try:
-                a[i][j] = math.ceil(col)
-            except:
-                pass
-    b = a - reduced_otp
-    b = a - reduced_pt
-    b = np.abs(b)
-    c = b / reduced_pt
+    reduced_otp = np.floor(reduced_otp/60.)*60.
+    time_frame = pd.concat([pd.DataFrame(reduced_otp[~np.isnan(reduced_otp)], columns=['otp']),
+                            pd.DataFrame(reduced_pt[~np.isnan(reduced_pt)], columns=['pt'])], axis=1)
+
+    comp_hist(frame=time_frame, colors=['red', 'blue'])
+    plt.hist(reduced_pt[~np.isnan(reduced_pt)], bins=50, fc=(0, 0, 1, 0.5))
+    # floor_diff = abs(reduced_otp-reduced_pt)
+    # floor_diff_pt = floor_diff/reduced_pt
+    # floor_diff_pt = floor_diff_pt[~np.isnan(floor_diff_pt)]
+    # floor_diff_otp = floor_diff/reduced_otp
+    # floor_diff_otp = floor_diff_otp[~np.isnan(floor_diff_otp)]
+    # plt.hist(floor_diff_pt, bins=70, range=(0, 1))
+    # plt.tight_layout()
+    # plt.savefig(fname=os.path.join(path_explore, 'pt_diff3'))
+    # plt.close()
+    # plt.hist(floor_diff_otp, bins=70, range=(0, 1))
+    # plt.tight_layout()
+    # plt.savefig(fname=os.path.join(path_explore, 'pt_diff4'))
+    # plt.close()
+
     a = 10
 
     geo_df = geopandas.GeoDataFrame(crs=crs_proj,
                                     geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    plotting.geo_plot(geo_frame=geo_df, graph=walked_graph)
+    geo_net_plot(geo_frame=geo_df, graph=walked_graph)
     a=1
 
 
@@ -162,7 +159,7 @@ filter_shorttrips()
 # clusters = get_cluster()
 # hist_cluster()
 
-geo_plot()
+# geo_plot()
 # plot_se_kmean()
 plot_adj_mat()
 

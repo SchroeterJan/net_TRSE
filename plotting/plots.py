@@ -19,18 +19,20 @@ plotting = Plotting()
 
 
 def hist_modes(travel_times):
-    edges_flat = pd.DataFrame(columns=travel_times)
-    edges_flat[travel_times[0]] = handler.bike.values.flatten()
-    edges_flat[travel_times[1]] = handler.pt.values.flatten()
+    time_frame = pd.DataFrame(columns=travel_times)
+    time_frame[travel_times[0]] = handler.bike.values.flatten()
+    time_frame[travel_times[1]] = handler.pt.values.flatten()
 
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
 
-    colors = {'Bike': 'red', 'Public Transport': 'blue'}
+    colors = ['red', 'blue']
+
+    plotting.comp_hist(frame=time_frame, colors=colors)
 
     for i, mode in enumerate(travel_times):
-        sns.histplot(data=edges_flat, x=mode, binwidth=60, color=colors[mode], label=mode, alpha=0.5)
-        plotting.meanline(data=edges_flat, variable=mode, x=i+1)
+        sns.histplot(data=time_frame, x=mode, binwidth=60, color=colors[mode], label=mode, alpha=0.5)
+        plotting.meanline(data=time_frame, variable=mode, x=i+1)
     ax.set_title('Travel time histogram')
     ax.set_xlabel('Time')
     ax.margins(x=0)
@@ -44,8 +46,8 @@ def hist_modes(travel_times):
 def hist_flows():
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
-    data = data=pd.DataFrame(data=handler.flows.values.flatten(),
-                                   columns=['values'])
+    data = pd.DataFrame(data=handler.flows.values.flatten(),
+                        columns=['values'])
     sns.histplot(data, log_scale=True, legend=False)
     plotting.meanline(data=data, variable='values')
     ax.set_title('Passenger flow histogram')

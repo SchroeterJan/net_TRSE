@@ -15,8 +15,8 @@ class OTP_grabber:
 
     def planner(self):
         if os.path.isfile(path_otp_scrape):
-            print('removing existing OTP times')
-            os.remove(path_otp_scrape)
+            print('an OTP scrape already exists, you may want to remove or save it before going on')
+            breakpoint()
         with open(file=path_otp_scrape, mode='w') as OTPtimes:
             OTPtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,WALK_TIME,WALK_DIST,TRANSIT_TIME,TRANSFERS\n')
             for i, or_row in enumerate(BuurtPC6[:, 2:]):
@@ -132,8 +132,8 @@ otp_grab.planner()
 
 grabber = GH_grabber()
 if os.path.isfile(path_bike_scrape):
-    print('removing existing Graphhopper times')
-    os.remove(path_bike_scrape)
+    print('a Graphhopper scrape already exists, you may want to remove or save it before going on')
+    breakpoint()
 
 with open(file=path_bike_scrape, mode='w') as GHtimes:
     GHtimes.write('ORIGING_LAT,ORIGIN_LNG,DESTINATION_LAT,DESTINATION_LNG,DURATION,DISTANCE,WEIGHT\n')

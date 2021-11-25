@@ -41,25 +41,16 @@ class DataHandling:
         return frame
 
 
+
+
+
 class Plotting:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
 
-    def meanline(self, data, variable, x=1):
-        plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
-        min_ylim, max_ylim = plt.ylim()
-        plt.text(data[variable].mean() * 1.1,
-                 max_ylim * (1 - 0.1 * x),
-                 'Mean: {:.2f}'.format(data[variable].mean()))
 
-    def geo_plot(self, geo_frame, graph):
-        pos = {}
-        for count, elem in enumerate(np.array(geo_frame.centroid)):
-            pos[geo_frame.index[count]] = (elem.x, elem.y)
-        fig, ax = plt.subplots(figsize=(20, 15))
-        geo_frame.plot(ax=ax)
-        nx.drawing.nx_pylab.draw_networkx_edges(G=graph, pos=pos, ax=ax)
+
 
 
     def correlation_heatmap(self, df):

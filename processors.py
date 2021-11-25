@@ -19,13 +19,12 @@ def build_matrix(length: int, data_list: list):
 class SENeighborhoods:
     # set up DataFrame for socio-economic variables
 
-
     # Initialize class
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         self.neighborhood_se = []
         self.path_se = os.path.join(dir_data, file_se)
-        self.path_geo = os.path.join(dir_data,file_geo)
+        self.path_geo = os.path.join(dir_data, file_geo)
 
         # load geographic data set if found
         if os.path.isfile(self.path_geo):
@@ -44,13 +43,11 @@ class SENeighborhoods:
         self.se_col_ind = np.where(header == column_names['se_col'])[0][0]
         self.neighborhood_se.append(header.tolist())
 
-
-
     # crop socio-economic data according to geographic data
     def crop_se(self, year):
         print('cropping socio-economic data')
         if os.path.isfile(self.path_se):
-            with open(file=self.path_se, mode='r') as se:               # open socio-economic data set
+            with open(file=self.path_se, mode='r') as se:  # open socio-economic data set
                 for line in se:
                     # split columns by seperator and strip "newline"
                     split = [x.strip() for x in line.split(sep=';')]
@@ -94,7 +91,7 @@ class PassengerCounts:
             self.stops = pd.read_csv(filepath_or_buffer=path_stops, sep=';')
         else:
             print('ERROR - No stop location data found in path: ' + path_stops)
-            self.stops = pd.DataFrame()                                                 #option to populate stops
+            self.stops = pd.DataFrame()  # option to populate stops
 
         if os.path.isfile(path_neighborhood_se):
             print('Loading neighborhood data')
@@ -202,7 +199,7 @@ class PassengerCounts:
 
         # set up area flow matrix
         area_flow_matrix = np.zeros((len(self.stop_area_association.index),
-                                      len(self.stop_area_association.index)))
+                                     len(self.stop_area_association.index)))
         # flow assignment scheme
         for origin, flow_row in enumerate(flow_matrix):
             # get associated stops for the origin area
@@ -219,9 +216,9 @@ class PassengerCounts:
                 for combination in trip_combinations:
                     area_flow_matrix[combination[0], combination[1]] += (flow / len(trip_combinations))
         area_flow_matrix[area_flow_matrix == 0.0] = np.nan
-        return(pd.DataFrame(area_flow_matrix,
-                            index=self.stop_area_association.index,
-                            columns=self.stop_area_association.index))
+        return (pd.DataFrame(area_flow_matrix,
+                             index=self.stop_area_association.index,
+                             columns=self.stop_area_association.index))
 
 
 class TransportPrep:
