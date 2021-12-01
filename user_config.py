@@ -1,65 +1,51 @@
+import yaml
+
+
+with open('config_file.yml') as file:
+    # The FullLoader parameter handles the conversion from YAML
+    # scalar values to Python the dictionary format
+    vars = yaml.load(file, Loader=yaml.FullLoader)
+
+
 # declare paths to raw data
-dir_data = r'C:\Users\jan.schroeter\Documents\Privat\Uni\Thesis\Data\Raw_Data'
+dir_data = vars['dir_data']
 
 # raw data Files
-file_geo = 'buurten all 2021-08-10 14.48.27.geojson'
+file_geo = vars['file_geo']
 # declare coordinate reference system of the polygon data, if already in epsg:4326 leave None
-crs_proj = 'epsg:28992'
+crs_proj = vars['crs_proj']
 
 # socio-economic data set
-file_se = 'bbga_latest_and_greatest.csv'
+file_se = vars['file_se']
 
 # locations for travel times (defaults to area centers if None given)
-file_locations = r'deprecated/Buurten_PC6.csv'
+file_locations = vars['file_locations']
 
-file_passcount = 'HBReizen_Schroter.csv'
-file_stops = 'stop_locations.csv'
+file_passcount = vars['file_passcount']
+file_stops = vars['file_stops']
 
 
 ### CONSTANTS
 # relevant column names
-column_names = {'geo_id_col': 'code',     # column holding area identifier
-                'pop_col': 'BEVTOTAAL',         # population
-                'geo_id_se': 'gebiedcode15',    # column in socio-economic data holding area identifier
-                'year_col': 'jaar',             # column holding the corresponding year of a se variable
-                'se_var_col': 'variabele',      # column holding the se variable identifiers
-                'se_col': 'waarde',             # column holding the value of an se variable
-                'stop_name': 'Stop_name',
-                'pass_or': 'Halte_(vertrek)',
-                'pass_dest': 'Halte_(aankomst)',
-                'pass_vol': 'Totaal_reizen',
-                'stop_lat': 'stop_lat',
-                'stop_lng': 'stop_lng'
-                }
+column_names = vars['column_names']
 
 # Declare actual Train Stations allowing to switch to regional transport (source:
 # https://en.wikipedia.org/wiki/List_of_railway_stations_in_Amsterdam)
-exclude_stops = ['Centraal Station',
-                 'Station Sloterdijk',
-                 'Station Lelylaan',
-                 'Station Zuid',
-                 'Station RAI',
-                 'Muiderpoortstation',
-                 'Amstelstation',
-                 'Station Bijlmer ArenA',
-                 'Station Science Park',
-                 'Station Holendrecht',
-                 'Station Duivendrecht'
-                 ]
+exclude_stops = vars['exclude_stops']
 
 # identifiers for relevant census variables
-census_variables = ['BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P', 'IHHINK_GEM', 'PREGWERKL_P']
+census_variables = vars['census_variables']
 
-scaling_variables = ['IHHINK_GEM', 'PREGWERKL_P']
+scaling_variables = vars['scaling_variables']
 
-model_variables = ['IHHINK_GEM_scaled', 'PREGWERKL_P_scaled', 'BEVOPLLAAG_P', 'BEVOPLMID_P', 'BEVOPLHOOG_P',]
+model_variables = vars['model_variables']
 
 # limit for Population density in people/km^2
-min_popdens = 150.0
+min_popdens = vars['min_popdens']
 # year of interest for Census data
-se_year = 2018
+se_year = vars['se_year']
 # proximity definition in coordinate distance
-proximity = 0.0005
-range_factor = 0.1
+proximity = vars['proximity']
+range_factor = vars['range_factor']
 # maximum definition of a short trip in meters
-short_trip = 500.0
+short_trip = vars['short_trip']

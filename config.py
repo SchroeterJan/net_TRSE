@@ -59,6 +59,8 @@ path_euclid_matrix = os.path.join(path_repo, path_generated, file_euclid)
 path_experiments = os.path.join(path_repo, 'experiment_data')
 path_clustercoeff = os.path.join(path_experiments, 'neighborhood_clustercoeff.csv')
 
+if not os.path.isdir(path_generated):
+    os.mkdir(path_generated)
 path_plotting = os.path.join(path_repo, 'plotting')
 if not os.path.isdir(path_plotting):
     os.mkdir(path_plotting)
