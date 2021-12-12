@@ -1,0 +1,39 @@
+from processors import *
+
+
+def meanline(data, variable, x=1):
+    plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
+    min_ylim, max_ylim = plt.ylim()
+    plt.text(data[variable].mean() * 1.1,
+             max_ylim * (1 - 0.1 * x),
+             'Mean: {:.2f}'.format(data[variable].mean()))
+
+
+# plot a graph (network) on a map represented by a geopandas data frame
+def geo_net_plot(geo_frame, graph):
+    # initiate a dictionary storing the position of all nodes
+    pos = {}
+    # loop over centroids of the areas in the geopandas data frame
+    for count, elem in enumerate(np.array(geo_frame.centroid)):
+        # add latitude (y) and longitude (x) of each area centroid to the position dictionary
+        pos[geo_frame.index[count]] = (elem.x, elem.y)
+    fig, ax = plt.subplots(figsize=(20, 15))
+    # plot the geopandas data frame
+    geo_frame.plot(ax=ax)
+    # plot the graph on the map using networkx
+    nx.drawing.nx_pylab.draw_networkx_edges(G=graph, pos=pos, ax=ax)
+
+
+# plot a histogram comparing columns of a data frame
+def comp_hist(frame, colors):
+    for i, col in enumerate(frame.columns):
+        sns.histplot(data=frame, x=col, binwidth=60, color=colors[i], label=col, alpha=0.5)
+        meanline(data=frame, variable=col, x=i + 1)
+
+
+def multi_plot(shape, suptitle='', ytext='', xtext=''):
+    fig, axes = plt.subplots(shape[0], shape[1], figsize=(30, 15))
+    # fig.suptitle(suptitle)
+    fig.text(0.5, 0.04, xtext, ha='center', va='center')
+    fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
+    return fig, axes
