@@ -1,3 +1,12 @@
+import itertools
+
+import geopandas
+import numpy as np
+import pandas as pd
+import shapely.wkt
+from shapely.geometry import Point
+import networkx as nx
+
 from config import *
 
 
@@ -23,8 +32,8 @@ class SENeighborhoods:
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
         self.neighborhood_se = []
-        self.path_se = os.path.join(dir_data, file_se)
-        self.path_geo = os.path.join(dir_data, file_geo)
+        self.path_se = os.path.join(dir_raw, file_se)
+        self.path_geo = os.path.join(dir_raw, file_geo)
 
         # load geographic data set if found
         if os.path.isfile(self.path_geo):
@@ -33,6 +42,7 @@ class SENeighborhoods:
         else:
             print('ERROR - No geographic data found at: ' + self.path_geo)
 
+        # calculate area of geographic units in km^2 (depending on crs unit, here m)
         self.geo_data['area'] = self.geo_data['geometry'].area / 10 ** 6
 
         header = open(file=self.path_se, mode='r').readline()
@@ -78,7 +88,7 @@ class PassengerCounts:
 
     def __init__(self):
         print("Initializing " + self.__class__.__name__)
-        path_passcount = os.path.join(dir_data, file_passcount)
+        path_passcount = os.path.join(dir_raw, file_passcount)
 
         if os.path.isfile(path_passcount):
             print('Loading Flow Data')
@@ -231,9 +241,9 @@ class TransportPrep:
         else:
             print('ERROR - No neighborhood data found in path: ' + path_neighborhood_se)
 
-        if os.path.isfile(os.path.join(dir_data, file_locations)):
+        if os.path.isfile(os.path.join(dir_raw, file_locations)):
             print('Loading provided locations for travel times')
-            self.locations = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, file_locations), sep=';')
+            self.locations = pd.read_csv(filepath_or_buffer=os.path.join(dir_raw, file_locations), sep=';')
 
     def load_data(self, path):
         if os.path.isfile(path):
@@ -306,3 +316,45 @@ class TransportPrep:
     #     ranks_OTP = np.empty_like(temp)
     #     ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
     #     clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
+
+
+
+
+class DataHandling:
+
+    def __init__(self):
+        print("Initializing " + self.__class__.__name__)
+        self.load_data()
+        for var in scaling_variables:
+            self.scale(var)
+
+    def load_data(self):
+        print("Loading data")
+        self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
+        self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
+        self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix,
+                                sep=';', index_col=0)
+        self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix,
+                              sep=';', index_col=0)
+        self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix,
+                               sep=';', index_col=0)
+        self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix,
+                                  sep=';', index_col=0)
+
+    def scale(self, variable):
+        max_val = max(self.neighborhood_se[variable])
+        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[variable]]
+        self.neighborhood_se[variable + '_scaled'] = scaled
+
+    def build_speed_vector(self, variable, euclid, name):
+        speed = []
+        for i, each in enumerate(euclid):
+            speed = (each*1000.0)/(variable[i]/60.0)
+            speed.append(speed)
+
+        pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
+
+    def reduce_matrix(self, frame):
+        frame = np.triu(m=frame.to_numpy(), k=0)
+        frame[frame == 0] = np.nan
+        return frame
