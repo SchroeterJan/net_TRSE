@@ -1,0 +1,54 @@
+# declare paths to raw data
+dir_raw : ''
+
+# raw data Files
+file_geo : ''
+# declare coordinate reference system of the polygon data, if already in epsg:4326 leave None
+crs_proj : ''
+
+# socio-economic data set
+file_se : ''
+
+# locations for travel times (defaults to area centers if None given)
+file_locations : ''
+
+file_passcount : ''
+file_stops : ''
+
+
+### CONSTANTS
+# relevant column names
+column_names :
+  'geo_id_col': ''           # column holding area identifier
+  'pop_col': ''         # population
+  'geo_id_se': ''    # column in socio-economic data holding area identifier
+  'year_col': ''             # column holding the corresponding year of a se variable
+  'se_var_col': ''      # column holding the se variable identifiers
+  'se_col': ''             # column holding the value of an se variable
+  'stop_name': ''
+  'pass_or': ''
+  'pass_dest': ''
+  'pass_vol': ''
+  'stop_lat': ''
+  'stop_lng': ''
+
+
+# Declare actual Train Stations allowing to switch to regional transport
+exclude_stops : ['']
+# identifiers for relevant census variables
+census_variables : ['']
+
+scaling_variables : ['', '']
+
+model_variables : ['', '', '', '', '']
+
+# limit for Population density in people/km^2 (float)
+min_popdens :
+# year of interest for Census data (int)
+se_year :
+# proximity definition in coordinate distance (float)
+proximity : 0.0005
+
+range_factor : 0.1
+# maximum definition of a short trip in meters (float)
+short_trip :

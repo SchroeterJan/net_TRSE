@@ -231,7 +231,7 @@ class PassengerCounts:
                              columns=self.stop_area_association.index))
 
 
-class TransportPrep:
+class ODPrep:
 
     def __init__(self, fair=False):
         print("Initializing " + self.__class__.__name__)
@@ -252,7 +252,7 @@ class TransportPrep:
         else:
             print('ERROR while trying to load ' + str(path))
 
-    def form_matrix(self, matrix):
+    def matrix_to_frame(self, matrix):
         od_matrix = pd.DataFrame(matrix,
                                  index=self.neighborhood_se[column_names['geo_id_col']],
                                  columns=self.neighborhood_se[column_names['geo_id_col']])
@@ -264,59 +264,6 @@ class TransportPrep:
         # iterate over all centroid locations and use geopandas distance function to calculate the distance to all other centroid locations
         distances = np.array([geo_df.centroid.distance(centroid) for centroid in geo_df.centroid])
         return distances
-
-    # def compare9292(self):
-    #     self.loadOTPtimes()
-    #
-    #     Buurts_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'Buurten_noParks.p'), "rb"))
-    #     BuurtBBGA = set(self.BBGA_Buurt_data.index)  # convert to set for fast lookups
-    #     BuurtDiff = [i for i, item in enumerate(Buurts_9292) if item not in BuurtBBGA]
-    #
-    #     minadvice_9292 = pickle.load(open(os.path.join(self.ROOT_DIR, generated, 'minadvice_PT.p'), "rb"))
-    #
-    #     OTP_times = np.array(self.OTP_times_data['DURATION'])
-    #     """
-    #     for i, each in enumerate(OTP_times):
-    #         try:
-    #             a = float(each)%60
-    #             if a <= 30.0:
-    #                 OTP_times[i] = float(each)-a
-    #             else:
-    #                 OTP_times[i] = float(each)+(60.0-a)
-    #         except:
-    #             continue
-    #     """
-    #
-    #     matrix_OTP = DataHandling().build_matrix(length=len(np.array(self.BBGA_Buurt_data['LNG'])),
-    #                                              data_list=OTP_times)
-    #     matrix_9292 = DataHandling().build_matrix(length=len(Buurts_9292), data_list=minadvice_9292)
-    #     matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=0)
-    #     matrix_9292 = np.delete(arr=matrix_9292, obj=BuurtDiff, axis=1)
-    #     Buurts_9292 = np.delete(arr=Buurts_9292, obj=BuurtDiff)
-    #     matrix_9292 = pd.DataFrame(matrix_9292, columns=pd.Series(Buurts_9292)).set_index(pd.Series(Buurts_9292))
-    #     matrix_9292 = matrix_9292.reindex(index=self.BBGA_Buurt_data.index)
-    #     matrix_9292 = matrix_9292.reset_index().drop(columns='Buurt_code')
-    #     matrix_9292 = matrix_9292.reindex(self.BBGA_Buurt_data.index, axis=1)
-    #
-    #
-    #     self.BBGA_Buurt_data['clust_9292']= Analysis().Clustering(matrix=matrix_9292,
-    #                                                               Buurten=np.array(self.BBGA_Buurt_data.index))
-    #     self.BBGA_Buurt_data['clust_OTP'] = Analysis().Clustering(matrix=matrix_OTP,
-    #                                                                Buurten=np.array(self.BBGA_Buurt_data.index))
-    #
-    #     self.BBGA_Buurt_data.to_csv(path_or_buf=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
-    #                                 index=True, index_label='Buurt_code', sep=';')
-    #
-    #     clust_comp = pd.read_csv(filepath_or_buffer=os.path.join(self.ROOT_DIR, generated, 'clust_comp.csv'),
-    #                              sep=';')
-    #     temp = np.array(clust_comp['clust_9292']).argsort()
-    #     ranks_9292 = np.empty_like(temp)
-    #     ranks_9292[temp] = np.arange(len(np.array(clust_comp['clust_9292'])))
-    #     temp = np.array(clust_comp['clust_OTP']).argsort()
-    #     ranks_OTP = np.empty_like(temp)
-    #     ranks_OTP[temp] = np.arange(len(np.array(clust_comp['clust_OTP'])))
-    #     clust_comp_kend = kendalltau(ranks_9292, ranks_OTP)
-
 
 
 
@@ -332,14 +279,10 @@ class DataHandling:
         print("Loading data")
         self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix,
-                                sep=';', index_col=0)
-        self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix,
-                              sep=';', index_col=0)
-        self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix,
-                               sep=';', index_col=0)
-        self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix,
-                                  sep=';', index_col=0)
+        self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix, sep=';', index_col=0)
+        #self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix, sep=';', index_col=0)
+        self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix, sep=';', index_col=0)
+        self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix, sep=';', index_col=0)
 
     def scale(self, variable):
         max_val = max(self.neighborhood_se[variable])
