@@ -1,4 +1,12 @@
-from processors import *
+from prep_resources import *
+
+from matplotlib import pyplot as plt
+import seaborn as sns
+import networkx as nx
+
+
+def geo_plot(frame, column, axis=None, cmap=None):
+    frame.plot(ax=axis, column=column, legend=True, cmap=cmap)
 
 
 def meanline(data, variable, x=1):
@@ -28,7 +36,7 @@ def geo_net_plot(geo_frame, graph):
 def comp_hist(frame, colors):
     for i, col in enumerate(frame.columns):
         sns.histplot(data=frame, x=col, binwidth=60, color=colors[i], label=col, alpha=0.5)
-        meanline(data=frame, variable=col, x=i + 1)
+        meanline(data=frame, variable=col, x=i + 5)
 
 
 def multi_plot(shape, suptitle='', ytext='', xtext=''):
