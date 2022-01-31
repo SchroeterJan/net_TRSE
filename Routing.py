@@ -1,3 +1,9 @@
+import json
+
+import numpy as np
+import pandas as pd
+import requests as rq
+
 from config import *
 
 
@@ -124,7 +130,7 @@ class GH_grabber:
 
 
 
-BuurtPC6 = pd.read_csv(filepath_or_buffer=os.path.join(dir_data, file_locations), sep=';').to_numpy()
+BuurtPC6 = pd.read_csv(filepath_or_buffer=os.path.join(dir_raw, file_locations), sep=';').to_numpy()
 
 otp_grab = OTP_grabber()
 otp_grab.planner()

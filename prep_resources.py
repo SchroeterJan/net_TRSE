@@ -4,8 +4,8 @@ import geopandas
 import numpy as np
 import pandas as pd
 import shapely.wkt
-from shapely.geometry import Point
-import networkx as nx
+from shapely.geometry import Point, LineString
+
 
 from config import *
 
@@ -139,6 +139,8 @@ class PassengerCounts:
         else:
             print('Geographic system is wrongly defined')
 
+
+
         # distance Matrix of all stops (Points) and areas (Polygons)
         stops_area_distance_matrix = \
             stop_points.apply(lambda stop: area_polygons.distance(stop))
@@ -174,6 +176,7 @@ class PassengerCounts:
         self.stop_area_association = pd.DataFrame(stops_area_distance_matrix,
                                                   index=self.neighborhood_se[column_names['geo_id_col']],
                                                   columns=self.stops[column_names['stop_name']])
+
 
     def filter_connections(self):
         print('Filter irrelevant connections')
@@ -264,40 +267,3 @@ class ODPrep:
         # iterate over all centroid locations and use geopandas distance function to calculate the distance to all other centroid locations
         distances = np.array([geo_df.centroid.distance(centroid) for centroid in geo_df.centroid])
         return distances
-
-
-
-class DataHandling:
-
-    def __init__(self):
-        print("Initializing " + self.__class__.__name__)
-        self.load_data()
-        for var in scaling_variables:
-            self.scale(var)
-
-    def load_data(self):
-        print("Loading data")
-        self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
-        self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
-        self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix, sep=';', index_col=0)
-        #self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix, sep=';', index_col=0)
-        self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix, sep=';', index_col=0)
-        self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix, sep=';', index_col=0)
-
-    def scale(self, variable):
-        max_val = max(self.neighborhood_se[variable])
-        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[variable]]
-        self.neighborhood_se[variable + '_scaled'] = scaled
-
-    def build_speed_vector(self, variable, euclid, name):
-        speed = []
-        for i, each in enumerate(euclid):
-            speed = (each*1000.0)/(variable[i]/60.0)
-            speed.append(speed)
-
-        pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
-
-    def reduce_matrix(self, frame):
-        frame = np.triu(m=frame.to_numpy(), k=0)
-        frame[frame == 0] = np.nan
-        return frame

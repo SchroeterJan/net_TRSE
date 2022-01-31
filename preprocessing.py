@@ -1,5 +1,4 @@
-from processors import *
-from config import *
+from prep_resources import *
 
 
 def areas():
@@ -26,15 +25,15 @@ def areas():
 
 def od_matrices():
     matrix_files = [path_bike_matrix, path_otp_matrix, path_euclid_matrix]
-    trans_prep = TransportPrep()
-    matrices = [build_matrix(length=len(trans_prep.neighborhood_se[column_names['geo_id_col']]),
-                             data_list=list(trans_prep.load_data(path_bike_scrape)['DURATION'] / 1000.0)),
-                build_matrix(length=len(trans_prep.neighborhood_se[column_names['geo_id_col']]),
-                             data_list=list(trans_prep.load_data(path_otp_scrape)['DURATION'])),
-                trans_prep.calc_euclid()]
+    od_prepare = ODPrep()
+    matrices = [build_matrix(length=len(od_prepare.neighborhood_se[column_names['geo_id_col']]),
+                             data_list=list(od_prepare.load_data(path_bike_scrape)['DURATION'] / 1000.0)),
+                build_matrix(length=len(od_prepare.neighborhood_se[column_names['geo_id_col']]),
+                             data_list=list(od_prepare.load_data(path_otp_scrape)['DURATION'])),
+                od_prepare.calc_euclid()]
 
     for i, matrix in enumerate(matrices):
-        matrix = trans_prep.form_matrix(matrix)
+        matrix = od_prepare.matrix_to_frame(matrix)
         matrix.to_csv(path_or_buf=matrix_files[i], sep=';')
 
 
@@ -54,6 +53,16 @@ def flows():
 
 
 
+
+
+    a = 1
+
+
+
+
+
+
 # areas()
-flows()
-od_matrices()
+# flows()
+# od_matrices()
+acc_barth()
