@@ -1,8 +1,11 @@
 from plotting.plot_functions import *
+import matplotlib.image as mgimg
+from matplotlib import animation
 
 plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
 sns.set_theme(style="ticks")
+
 
 
 
@@ -82,10 +85,6 @@ def se_maps(handler):
 
         geo_frame[each] = handler.neighborhood_se[each]
         geo_plot(frame=geo_frame, axis=axes[i], column=each, cmap='OrRd')
-        axes[i].set_xticklabels([])
-        axes[i].set_yticklabels([])
-        axes[i].set_xticks([])
-        axes[i].set_yticks([])
         axes[i].set_title(label=each)
     plt.savefig(fname=os.path.join(path_maps, 'se_variables_maps'))
 
@@ -115,21 +114,45 @@ def hist_qij(matrix, mode):
     plt.close(f)
 
 
-def plot_mst(data):
+def mst_plot(data):
     fig, ax = plt.subplots(figsize=(20, 15))
-    ax.get_xaxis().set_visible(False)
-    ax.get_yaxis().set_visible(False)
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['bottom'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    geo_plot(frame=data.geo_df, axis=ax, cmap='tab20')
     ax.set_title('MST for SKATER', fontsize=40)
-    data.geo_df.plot(ax=ax)
-    nx.drawing.nx_pylab.draw_networkx_edges(G=data.mst(), pos=data.pos, ax=ax)
+    nx.drawing.nx_pylab.draw_networkx_edges(G=data.mst(), pos=data.pos, ax=ax, width=2.0)
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_maps, 'mst'))
     plt.close(fig)
 
+
+def animate_skater(c):
+    fig = plt.figure()
+
+    # initiate an empty  list of "plotted" images
+    myimages = []
+
+    # loops through available png:s
+    for p in range(0, c+1):
+        ## Read in picture
+        fname = "c_%01d.png" % p
+        img = mgimg.imread(os.path.join(path_skater, fname))
+        imgplot = plt.imshow(img)
+
+        # append AxesImage object to the list
+        myimages.append([imgplot])
+
+    ## create an instance of animation
+    my_anim = animation.ArtistAnimation(fig, myimages, interval=1000, blit=True, repeat_delay=1000)
+
+    ## NB: The 'save' method here belongs to the object you created above
+    my_anim.save(os.path.join(path_skater, "animation.mp4"))
+
+    ## Showtime!
+    #plt.show()
+
+
+
+    # fig, ax = plt.subplots(figsize=(20, 15))
+    # skat.geo_df.plot(ax=ax)
+    # for component in comp:
+    #     nx.drawing.nx_pylab.draw_networkx_edges(G=component, pos=skat.pos, ax=ax)
 

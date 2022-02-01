@@ -196,10 +196,55 @@ class Skater:
             s_p.append(split)
         return s_p
 
-    def tree_patitioning(self, c):
+    def plot_tree(self, c):
+        fig, ax = plt.subplots(figsize=(20, 15))
+        geo_plot(frame=self.geo_df, column='clust', axis=ax, cmap='tab20')
+        ax.set_title('SKATER clustering', fontsize=40)
+        plt.tight_layout()
+        plt.savefig(fname=os.path.join(path_skater, 'c_' + c))
+        plt.close(fig)
+
+    def plot_clust_init(self):
+        colors = {1: 'tab:blue',
+                  2: 'lightsteelblue',
+                  3: 'tab:orange',
+                  4: 'moccasin',
+                  5: 'tab:green',
+                  6: 'mediumseagreen',
+                  7: 'tab:red',
+                  8: 'salmon',
+                  9: 'tab:purple',
+                  10: 'plum',
+                  11: 'tab:brown',
+                  12: 'sandybrown',
+                  13: 'tab:pink',
+                  14: 'palevioletred',
+                  15: 'tab:gray',
+                  16: 'lightgray',
+                  17: 'tab:olive',
+                  18: 'gold',
+                  19: 'tab:cyan',
+                  20: 'aquamarine'}
+
+        self.fig, self.ax = plt.subplots(figsize=(20, 15))
+        self.ax.set_aspect('equal')
+        self.ax.set_title('SKATER clustering', fontsize=40)
+        self.geo_df.boundary.plot(ax=self.ax, edgecolor='black')
+        self.ax.set_axis_off()
+
+        return colors
+
+
+    def tree_patitioning(self, c, plot=False):
         print('Start tree partitioning')
         components = [self.mst()]
         sc = 20
+        if plot:
+            colors = self.plot_clust_init()
+            self.geo_df['clust'] = 0
+            self.geo_df.plot(ax=self.ax, color=colors[1])
+            plt.tight_layout()
+            plt.savefig(fname=os.path.join(path_skater, 'c_0'))
 
         for clust in range(c):
             best_edges = []
@@ -233,9 +278,9 @@ class Skater:
                     f1_list = []
                     s_p = self.potential_solution(edges=s_p_edges, graph=t)
                     ssd_t = self.ssd(k=t, x=self.model_df.loc[list(t.nodes())])
-                    for i, s in enumerate(s_p):
+                    for comp, s in enumerate(s_p):
                         f, f_2 = self.objective_functions(ssd_t=ssd_t, t_a=s[0], t_b=s[1])
-                        list_l[s_p_edges[i]] = f_2
+                        list_l[s_p_edges[comp]] = f_2
                         f1_list.append(f)
                     f1_s_j = max(f1_list)
 
@@ -262,6 +307,15 @@ class Skater:
             components[best_ind].remove_edge(best_edge[0], best_edge[1])
             components.extend([components[best_ind].subgraph(c).copy() for c in nx.connected_components(components[best_ind])])
             del components[best_ind]
+            if plot:
+                for node in list(components[-1].nodes()):
+                    self.geo_df.at[node, 'clust'] = clust + 1
+                comp_geo = self.geo_df.loc[list(components[-1].nodes())]
+                comp_geo.plot(ax=self.ax, color=colors[clust+2])
+                self.ax.set_axis_off()
+                plt.tight_layout()
+                plt.savefig(fname=os.path.join(path_skater, 'c_' + str(clust + 1)))
+
 
         return components
 
@@ -356,27 +410,6 @@ def plot_se_kmean():
 
 
 
-
-def plot_adj_mat(c):
-    skat = Skater()
-    comp = skat.tree_patitioning(c)
-
-    fig, ax = plt.subplots(figsize=(20, 15))
-    skat.geo_df.plot(ax=ax)
-    # nx.drawing.nx_pylab.draw_networkx_edges(G=comp, pos=skat.pos, ax=ax)
-
-    for component in comp:
-        nx.drawing.nx_pylab.draw_networkx_edges(G=component, pos=skat.pos, ax=ax)
-    plt.show()
-    plt.close(fig=fig)
-    for i in range(c):
-        a = list(comp[i].nodes())
-        for node in a:
-            skat.geo_df.at[node, 'clust'] = i
-    fig, ax = plt.subplots(figsize=(20, 15))
-    skat.geo_df.plot(ax=ax, column='clust')
-    plt.show()
-    a =10
 
 
 

@@ -5,7 +5,8 @@ import seaborn as sns
 import networkx as nx
 
 
-def geo_plot(frame, column, axis=None, cmap=None):
+def geo_plot(frame, column=None, axis=None, cmap=None):
+    axis.set_axis_off()
     frame.plot(ax=axis, column=column, legend=True, cmap=cmap)
 
 
@@ -17,19 +18,19 @@ def meanline(data, variable, x=1):
              'Mean: {:.2f}'.format(data[variable].mean()))
 
 
-# plot a graph (network) on a map represented by a geopandas data frame
-def geo_net_plot(geo_frame, graph):
-    # initiate a dictionary storing the position of all nodes
-    pos = {}
-    # loop over centroids of the areas in the geopandas data frame
-    for count, elem in enumerate(np.array(geo_frame.centroid)):
-        # add latitude (y) and longitude (x) of each area centroid to the position dictionary
-        pos[geo_frame.index[count]] = (elem.x, elem.y)
-    fig, ax = plt.subplots(figsize=(20, 15))
-    # plot the geopandas data frame
-    geo_frame.plot(ax=ax)
-    # plot the graph on the map using networkx
-    nx.drawing.nx_pylab.draw_networkx_edges(G=graph, pos=pos, ax=ax)
+# # plot a graph (network) on a map represented by a geopandas data frame
+# def geo_net_plot(geo_frame, graph):
+#     # initiate a dictionary storing the position of all nodes
+#     pos = {}
+#     # loop over centroids of the areas in the geopandas data frame
+#     for count, elem in enumerate(np.array(geo_frame.centroid)):
+#         # add latitude (y) and longitude (x) of each area centroid to the position dictionary
+#         pos[geo_frame.index[count]] = (elem.x, elem.y)
+#     fig, ax = plt.subplots(figsize=(20, 15))
+#     # plot the geopandas data frame
+#     geo_frame.plot(ax=ax)
+#     # plot the graph on the map using networkx
+#     nx.drawing.nx_pylab.draw_networkx_edges(G=graph, pos=pos, ax=ax)
 
 
 # plot a histogram comparing columns of a data frame
@@ -45,3 +46,4 @@ def multi_plot(shape, suptitle='', ytext='', xtext=''):
     fig.text(0.5, 0.04, xtext, ha='center', va='center')
     fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
     return fig, axes
+
