@@ -56,6 +56,7 @@ def sna_links(handler):
 
 
 handler = DataHandling()
+handler.matrices()
 sna_links(handler)
 se_year(handler)
 hist_modes(handler, travel_times)
