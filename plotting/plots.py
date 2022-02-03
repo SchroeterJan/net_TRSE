@@ -11,8 +11,8 @@ sns.set_theme(style="ticks")
 
 def hist_modes(handler, travel_times):
     time_frame = pd.DataFrame(columns=travel_times)
-    time_frame[travel_times[0]] = handler.bike.values.flatten()
-    time_frame[travel_times[1]] = handler.otp.values.flatten()
+    time_frame[travel_times[0]] = handler.bike.flatten()
+    time_frame[travel_times[1]] = handler.otp.flatten()
 
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
@@ -34,7 +34,7 @@ def hist_modes(handler, travel_times):
 def hist_flows(handler):
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
-    data = pd.DataFrame(data=handler.flows.values.flatten(),
+    data = pd.DataFrame(data=handler.flows.flatten(),
                         columns=['values'])
     sns.histplot(data, log_scale=True, legend=False)
     meanline(data=data, variable='values')
@@ -256,3 +256,17 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
         return hb
     else:
         plt.show()
+
+
+def hist_cluster(handler, mode):
+    f, ax = plt.subplots(figsize=(7, 5))
+    sns.despine(f)
+    sns.histplot(data=handler.neighborhood_se, x=handler.neighborhood_se[mode])
+    ax.set_title('Clustering coefficient for ' + mode)
+    plt.xlabel('Clustering coefficient')
+    ax.margins(x=0)
+    plt.tight_layout()
+    plt.legend()
+    plt.savefig(fname=os.path.join(path_hists, 'cluster_hist' + mode))
+    plt.close(f)
+

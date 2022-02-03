@@ -5,21 +5,26 @@ import math
 
 class DataHandling:
 
-    def __init__(self):
+    def __init__(self, new=False):
         print("Initializing " + self.__class__.__name__)
+        self.new = new
         self.load_data()
-        for var in scaling_variables:
-            self.scale(var)
         #self.mix_otp_bike()
 
     def load_data(self):
         print("Loading data")
-        self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se, sep=';', index_col=0)
+        if self.new:
+            self.neighborhood_se = pd.read_csv(filepath_or_buffer=os.path.join(path_experiments, file_neighborhood_se),
+                                               sep=',', index_col=0)
+        else:
+            self.neighborhood_se = pd.read_csv(filepath_or_buffer=path_neighborhood_se,
+                                               sep=';', index_col=0)
         self.flows = pd.read_csv(filepath_or_buffer=path_flows, sep=';', index_col=0)
         self.bike = pd.read_csv(filepath_or_buffer=path_bike_matrix, sep=';', index_col=0)
         #self.pt = pd.read_csv(filepath_or_buffer=path_pt_matrix, sep=';', index_col=0)
         self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix, sep=';', index_col=0)
         self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix, sep=';', index_col=0)
+
 
     def matrices(self):
         self.flows = self.reduce_matrix(self.flows)
@@ -33,10 +38,11 @@ class DataHandling:
         for i, j in enumerate(short[0]):
             self.mixed[j, short[1][i]] = self.bike[j, short[1][i]]
 
-    def scale(self, variable):
-        max_val = max(self.neighborhood_se[variable])
-        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[variable]]
-        self.neighborhood_se[variable + '_scaled'] = scaled
+    # def scale(self):
+    #     for var in scaling_variables:
+    #         max_val = max(self.neighborhood_se[var])
+    #         scaled = [100.0*(each/max_val) for each in self.neighborhood_se[var]]
+    #         self.neighborhood_se[var + '_scaled'] = scaled
 
     def build_speed_vector(self, variable, euclid, name):
         speed = []
@@ -51,11 +57,50 @@ class DataHandling:
         matrix[matrix == 0] = np.nan
         return matrix
 
+    def get_q_ij(self):
+        self.otp_q = self.euclid / self.otp
+        self.bike_q = self.euclid / self.bike
+        #self.mixed_q = self.euclid / self.mixed
+
+    def get_q(self):
+        self.neighborhood_se['otp_q'] = (np.nan_to_num(self.otp_q).sum(axis=1) +
+                                         np.nan_to_num(self.otp_q).sum(axis=0)) / (len(self.otp_q[0]) - 1)
+        self.neighborhood_se['bike_q'] = (np.nan_to_num(self.bike_q).sum(axis=1) +
+                                         np.nan_to_num(self.bike_q).sum(axis=0)) / (len(self.bike_q[0]) - 1)
+        #self.neighborhood_se['mixed_q'] = (np.nan_to_num(self.mixed_q).sum(axis=1) +
+        #                                 np.nan_to_num(self.mixed_q).sum(axis=0)) / (len(self.mixed_q[0]) - 1)
+
+
+    def initiate_graph(self):
+        #neighborhoods = self.neighborhood_se.index
+        self.graph = nx.Graph()
+        for neighborhood in self.neighborhood_se[column_names['geo_id_col']]:
+            self.graph.add_node(neighborhood)
+
+
+    def choose_mode(self, mode):
+        if mode == 'pt':
+            return self.otp
+        elif mode == 'bike':
+            return self.bike
+        else:
+            print('PICKED MODE IS NOT PREDEFINED - PLEASE SPECIFY \'pt\' or \'bike\'')
+
+
+    def add_edges(self, mode):
+        matrix = self.choose_mode(mode=mode)
+        # create edges between all nodes and populate them with travel times as weights
+        for i, row in enumerate(matrix):
+            for j, value in enumerate(row[i+1:]):
+                if value != 0.0:
+                    self.graph.add_edge(list(self.neighborhood_se[column_names['geo_id_col']])[i],
+                                             list(self.neighborhood_se[column_names['geo_id_col']])[j + i+1],
+                                             weight=value)
 
 
 class Skater:
 
-    def __init__(self):
+    def __init__(self, variables):
         print("Initializing " + self.__class__.__name__)
         handler = DataHandling()
         # areas into geopandas DataFrame
@@ -69,7 +114,7 @@ class Skater:
         self.geo_pos()
 
         # create DataFrame containing relevant socio-economic variables for the model
-        self.model_df = handler.neighborhood_se[model_variables]
+        self.model_df = handler.neighborhood_se[variables]
 
     def geo_pos(self):
         # get positions of nodes to make the graph spatial
@@ -320,16 +365,6 @@ class Skater:
         return components
 
 
-
-
-
-
-
-
-
-
-
-
 # def filter_shorttrips():
 #     walked = handler.reduce_matrix(frame=handler.bike)
 #     walked = np.where(walked < short_trip)
@@ -376,47 +411,8 @@ class Skater:
 
 
 
-def hist_cluster():
-    cluster_list = {'pt_all': 'blue',
-
-                    'pt_rel': 'red'
-                    }
-
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
-    clusters = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
-    for cluster in cluster_list:
-        sns.histplot(data=clusters, x=cluster, color=cluster_list[cluster], binwidth=0.025, label=cluster, alpha=0.6)
-    ax.set_title('Clustering coefficient for Public Transport')
-    plt.xlabel('Clustering coefficient')
-    ax.margins(x=0)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig(fname=os.path.join(path_hists, 'cluster_hist'))
-    plt.close(f)
-
-
-
-def plot_se_kmean():
-    geo_frame = se_kmean()
-
-    fig, ax = plt.subplots(figsize=(20, 15))
-    geo_frame.plot(column='clust', legend=True, cmap='viridis_r', ax=ax)
-    ax.set_title('KMean Cluster for Socio-economic data')
-    plt.savefig(fname=os.path.join(path_maps, 'kmean_cluster'))
-
-
-
-
-
-
-
-
-
-
 # hist_scaled_se()
 # clusters = get_cluster()
 # hist_cluster()
-# plot_se_kmean()
 
 # plot_adj_mat()

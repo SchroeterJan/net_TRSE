@@ -1,34 +1,79 @@
 from exp_resources import *
 
-#plot_mst(data=Skater())
 
-# Class objects
-handler = DataHandling()
+def exec_skater():
+    mst_plot(data=Skater(variables=model_variables))
+    skat = Skater()
+    c = 15
 
-def get_q(matrix, mode):
-    q_ij_mode = handler.euclid/ matrix
-    hist_qij(q_ij_mode, mode)
-    return (np.nan_to_num(q_ij_mode).sum(axis=1) + np.nan_to_num(q_ij_mode).sum(axis=0)) / (len(q_ij_mode[0]) -1)
+    skat.tree_patitioning(c=c, plot=True)
+    animate_skater(c)
 
+
+def accessibility_barth():
+    handler.mix_otp_bike()
+    handler.get_q_ij()
+    handler.get_q()
+
+    #geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
+    #                                   geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+    #geo_plot(frame=geo_frame, column='q_otp')
+
+    hist_acc_barth(data=handler.neighborhood_se, mode='bike_q')
+    hist_acc_barth(data=handler.neighborhood_se, mode='otp_q')
+    #hist_acc_barth(data=handler.neighborhood_se, mode='mixed_q')
+
+
+def flatten(x):
+    x = x.flatten()
+    x = x[~np.isnan(x)]
+    return x
+
+
+def velocity():
+    handler.get_q_ij()
+
+    heatscatter(x=flatten(handler.bike_q),
+                y=flatten(handler.euclid),
+                xlabel='Overcome distance per second',
+                ylabel='Euclidean distance',
+                title='Heatscatter OTP',
+                av=True)
+
+
+def clust():
+    handler.initiate_graph()
+    handler.add_edges(mode='pt')
+
+    cluster_dict = nx.clustering(handler.graph, weight='weight')
+    handler.neighborhood_se['otp_clust'] = np.array(list(cluster_dict.values()))
+
+    handler.initiate_graph()
+    handler.add_edges(mode='bike')
+    cluster_dict = nx.clustering(handler.graph, weight='weight')
+    handler.neighborhood_se['bike_clust'] = np.array(list(cluster_dict.values()))
+
+    hist_cluster(handler=handler, mode='otp_clust')
+    hist_cluster(handler=handler, mode='bike_clust')
+
+
+# handler = DataHandling()
+# handler.matrices()
+# accessibility_barth()
+# velocity()
+# clust()
+# handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+handler = DataHandling(new=True)
 handler.matrices()
-handler.mix_otp_bike()
-q_ = {'q_otp': handler.otp,
-      'q_bike': handler.bike,
-      'q_mixed': handler.mixed}
 
-for mode, data in q_.items():
-    handler.neighborhood_se[mode] = get_q(matrix=data, mode=mode)
-
-
-geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
-                                   geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-geo_plot (frame=geo_frame, column='q_otp')
-
-hist_acc_barth(handler=handler, q_list=list(q_.keys()))
+handler.otp[handler.otp > 3600.0] = np.nan
+a = 1
 
 
 
 
+a = 10
+#clust()
 
 
 def reduce_se_variables():
