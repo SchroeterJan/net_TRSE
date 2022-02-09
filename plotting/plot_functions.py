@@ -37,9 +37,9 @@ def meanline(data, variable=None, x=1):
 
 
 # plot a histogram comparing columns of a data frame
-def comp_hist(frame, colors):
+def comp_hist(frame, colors, binw):
     for i, col in enumerate(frame.columns):
-        sns.histplot(data=frame, x=col, binwidth=60, color=colors[i], label=col, alpha=0.5)
+        sns.histplot(data=frame, x=col, binwidth=binw, color=colors[i], label=col, alpha=0.5)
         meanline(data=frame, variable=col, x=i + 5)
 
 
