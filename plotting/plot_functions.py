@@ -10,8 +10,11 @@ def geo_plot(frame, column=None, axis=None, cmap=None):
     frame.plot(ax=axis, column=column, legend=True, cmap=cmap)
 
 
-def meanline(data, variable, x=1):
-    plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
+def meanline(data, variable=None, x=1):
+    if isinstance(data, pd.DataFrame):
+        plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
+    elif isinstance(data, np.ndarray):
+        plt.axvline(data.flatten().mean(), color='k', linestyle='dashed', linewidth=1)
     min_ylim, max_ylim = plt.ylim()
     plt.text(data[variable].mean() * 1.1,
              max_ylim * (1 - 0.1 * x),
