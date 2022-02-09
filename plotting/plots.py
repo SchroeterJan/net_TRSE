@@ -106,7 +106,9 @@ def hist_qij(matrix, mode):
     x = x[~np.isnan(x)]
     sns.despine(f)
     sns.histplot(data=x)
-    ax.set_title('Histogram of inverse velocity for ' + mode)
+    meanline(data=x)
+    ax.set_title('Histogram of ' + r'$1/q_{ij}$' + ' velocity for ' + mode)
+    ax.set_xlabel('velocity in ' + r'$km/h$')
     ax.margins(x=0)
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_q, 'v_' + mode))
