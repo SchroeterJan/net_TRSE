@@ -1,5 +1,9 @@
 from exp_resources import *
 
+from scipy.optimize import curve_fit
+
+from scipy.stats import gamma
+
 
 def exec_skater():
     mst_plot(data=Skater(variables=model_variables))
@@ -10,7 +14,7 @@ def exec_skater():
     animate_skater(c)
 
 
-def accessibility_barth():
+def straightness_centrality():
     handler.mix_otp_bike()
     handler.get_q_ij()
     handler.get_q()
@@ -24,16 +28,15 @@ def accessibility_barth():
     #hist_acc_barth(data=handler.neighborhood_se, mode='mixed_q')
 
 
-def flatten(x):
-    x = x.flatten()
-    x = x[~np.isnan(x)]
-    return x
-
-
 def velocity():
     handler.get_q_ij()
 
-    heatscatter(x=flatten(handler.bike_q),
+    # very conservative correction for outliers 12x standard deviation from median (excempts one connection in noord)
+    hist_qij(matrix=reject_outliers(flatten(handler.bike_qij)), mode='bike')
+    hist_qij(matrix=handler.otp_qij, mode='public transport')
+    #hist_qij(matrix=handler.pt_qij, mode='pt')
+
+    heatscatter(x=flatten(handler.bike_qij),
                 y=flatten(handler.euclid),
                 xlabel='Overcome distance per second',
                 ylabel='Euclidean distance',
@@ -57,14 +60,77 @@ def clust():
     hist_cluster(handler=handler, mode='bike_clust')
 
 
-# handler = DataHandling()
-# handler.matrices()
-# accessibility_barth()
-# velocity()
+def investigate_flows():
+    bin_heights, bin_borders, _ = plt.hist(flatten(handler.euclid), bins='auto')
+    bin_widths = np.diff(bin_borders)
+    plt.close()
+    bin_centers = bin_borders[:-1] + np.diff(bin_borders) / 2
+
+    y1 = bin_heights / np.trapz(bin_centers, bin_heights)
+
+    fit_alpha, fit_loc, fit_beta = gamma.fit(flatten(handler.euclid))
+    x = np.linspace(gamma.ppf(0.01, fit_alpha), gamma.ppf(0.99, fit_alpha), 100)
+    rv = gamma(fit_alpha)
+    fig, ax = plt.subplots(1, 1)
+    ax.plot(x, rv.pdf(x), 'k-', lw=2, label='frozen pdf')
+    #plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
+    #ax.hist(flatten(handler.euclid), density=True, histtype='stepfilled', alpha=0.2)
+    plt.show()
+
+
+    a = 1.99
+    mean, var, skew, kurt = gamma.stats(a, moments='mvsk')
+    x = np.linspace(gamma.ppf(0.01, a), gamma.ppf(0.99, a), 100)
+
+
+    vals = gamma.ppf([0.001, 0.5, 0.999], a)
+    print(np.allclose([0.001, 0.5, 0.999], gamma.cdf(vals, a)))
+    plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
+    plt.show()
+    a = 10
+
+
+
+
+
+
+
+    params, _ = curve_fit(lognorm, bin_centers, -y1)
+    #x_interval_for_fit = np.linspace(bin_borders[0], bin_borders[-1], 20000)
+    plt.figure()
+    plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
+    #plt.plot(bin_centers, -y1, 'o')
+    plt.plot(bin_centers, lognorm(bin_centers, params[0], params[1]), label='fit', c='red')
+    plt.legend()
+    plt.show()
+    a = 10
+
+
+    total_flows = np.triu(np.triu(handler.flows.values, k=0) + np.tril(handler.flows.values, k=0).T)
+    reached = total_flows > 0.0
+    reached[handler.bike < 600] = True
+    dist_flows = handler.euclid[reached]
+    a = 10
+
+
+
+
+handler = DataHandling()
+handler.matrices()
+#accessibility_barth()
+velocity()
 # clust()
 # handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
 handler = DataHandling(new=True)
 handler.matrices()
+
+investigate_flows()
+
+# otp_long = (flatten(handler.otp.values) > 3600.0).sum()
+# otp_long_flows = handler.flows.values.flatten()[handler.otp.values.flatten() > 3600.0]
+
+
+bike_long = (flatten(handler.bike) > 1800.0).sum()
 
 handler.otp[handler.otp > 3600.0] = np.nan
 a = 1

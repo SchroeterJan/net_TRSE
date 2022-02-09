@@ -27,10 +27,12 @@ class DataHandling:
 
 
     def matrices(self):
-        self.flows = self.reduce_matrix(self.flows)
+        # flows are generated distinct for journey to and from
+        #self.flows = self.reduce_matrix(self.flows)
         self.bike = self.reduce_matrix(self.bike)
         self.otp = self.reduce_matrix(self.otp)
         self.euclid = self.reduce_matrix(self.euclid)
+        #self.pt = self.reduce_matrix(self.pt)
 
     def mix_otp_bike(self):
         short = np.asarray(self.euclid < short_trip).nonzero()
@@ -58,15 +60,17 @@ class DataHandling:
         return matrix
 
     def get_q_ij(self):
-        self.otp_q = self.euclid / self.otp
-        self.bike_q = self.euclid / self.bike
+        # reciprocal of the route factor - multiplied to result in km/h
+        self.otp_qij = self.euclid / self.otp * 3.6
+        self.bike_qij = self.euclid / self.bike * 3.6
+        #self.pt_qij = self.euclid / self.pt * 3.6
         #self.mixed_q = self.euclid / self.mixed
 
     def get_q(self):
-        self.neighborhood_se['otp_q'] = (np.nan_to_num(self.otp_q).sum(axis=1) +
-                                         np.nan_to_num(self.otp_q).sum(axis=0)) / (len(self.otp_q[0]) - 1)
-        self.neighborhood_se['bike_q'] = (np.nan_to_num(self.bike_q).sum(axis=1) +
-                                         np.nan_to_num(self.bike_q).sum(axis=0)) / (len(self.bike_q[0]) - 1)
+        self.neighborhood_se['otp_q'] = (np.nan_to_num(self.otp_qij).sum(axis=1) +
+                                         np.nan_to_num(self.otp_qij).sum(axis=0)) / (len(self.otp_qij[0]) - 1)
+        self.neighborhood_se['bike_q'] = (np.nan_to_num(self.bike_qij).sum(axis=1) +
+                                          np.nan_to_num(self.bike_qij).sum(axis=0)) / (len(self.bike_qij[0]) - 1)
         #self.neighborhood_se['mixed_q'] = (np.nan_to_num(self.mixed_q).sum(axis=1) +
         #                                 np.nan_to_num(self.mixed_q).sum(axis=0)) / (len(self.mixed_q[0]) - 1)
 
@@ -407,7 +411,23 @@ class Skater:
 #     geo_net_plot(geo_frame=geo_df, graph=walked_graph)
 #     a=1
 
+def flatten(x):
+    x = x.flatten()
+    x = x[~np.isnan(x)]
+    return x
 
+
+def gaussian(x, mean, amplitude, standard_deviation):
+    return amplitude * np.exp( - (x - mean)**2 / (2*standard_deviation ** 2))
+
+
+def lognorm(x, mu, sigma) :
+   return 1/((x-sigma)*(np.sqrt(2*np.pi)*sigma))*np.exp(-((np.log(x-sigma)-
+   mu)**2)/(2*sigma**2))
+
+
+def reject_outliers(data, m=12.):
+    return data[abs(data - np.mean(data)) < m * np.std(data)]
 
 
 
