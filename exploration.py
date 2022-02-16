@@ -1,7 +1,5 @@
 from exp_resources import *
 
-travel_times = ['Bike', 'Public Transport']
-
 
 def se_year():
     year_list = range(2015, 2021, 1)

@@ -1,13 +1,25 @@
 from prep_resources import *
 
 from matplotlib import pyplot as plt
+import mapclassify
 import seaborn as sns
 import networkx as nx
 
 
-def geo_plot(frame, column=None, axis=None, cmap=None):
-    axis.set_axis_off()
-    frame.plot(ax=axis, column=column, legend=True, cmap=cmap)
+
+
+
+def geo_plot(frame, column=None, axis=None, legend=None):
+    if axis != None:
+        axis.set_axis_off()
+    frame.plot(ax=axis, column=column,
+               cmap='Set1',
+               scheme='quantiles',
+               legend=True,
+               legend_kwds=dict(loc='lower left',
+                                fontsize='medium',
+                                title=legend,
+                                frameon=False))
 
 
 def meanline(data, variable=None, x=1):

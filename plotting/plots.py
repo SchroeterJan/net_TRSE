@@ -19,7 +19,7 @@ def hist_modes(handler, travel_times):
 
     colors = ['red', 'blue']
 
-    comp_hist(frame=time_frame, colors=colors)
+    comp_hist(frame=time_frame, colors=colors, binw=60)
 
     ax.set_title('Travel time histogram')
     ax.set_xlabel('Time in seconds')
@@ -89,29 +89,62 @@ def se_maps(handler):
     plt.savefig(fname=os.path.join(path_maps, 'se_variables_maps'))
 
 
-def hist_acc_barth(data, mode):
+def hist_straight(data, modes):
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
-    sns.histplot(data=data, x=mode)
-    ax.set_title('Histogram of ' + mode)
+    data = data[modes]
+    data.set_axis(['Bike', 'Public Transport'], axis=1, inplace=True)
+
+    colors = ['red', 'blue']
+
+    comp_hist(frame=data, colors=colors, binw=0.2)
+
+    ax.set_title('Histogram of ' + r'$St$')
+    ax.set_xlabel('Adapted Straightness Centrality')
     ax.margins(x=0)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_hists, mode))
+    plt.legend()
+    plt.savefig(fname=os.path.join(path_q, 'q_comp'))
     plt.close(f)
 
 
-def hist_qij(matrix, mode):
-    f, ax = plt.subplots(figsize=(7, 5))
-    x = matrix.flatten()
-    x = x[~np.isnan(x)]
+def straight_map(data, column, mode):
+
+    f, ax = plt.subplots(figsize=(8, 8))
     sns.despine(f)
-    sns.histplot(data=x)
-    meanline(data=x)
-    ax.set_title('Histogram of ' + r'$1/q_{ij}$' + ' velocity for ' + mode)
-    ax.set_xlabel('velocity in ' + r'$km/h$')
+
+    geo_plot(frame=data,
+             column=column,
+             axis=ax,
+             legend='Adapted Straightness Centrality')
+
+    ax.set_title('Spatial distribution of ' + r'$St$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_q, 'v_' + mode))
+    plt.savefig(fname=os.path.join(path_maps, 'q_map_' + mode))
+    plt.close(f)
+
+
+
+def hist_qij(handler, travel_times):
+    # time_frame = pd.DataFrame(columns=travel_times)
+    time_frame = pd.concat([pd.DataFrame(handler.bike_qij), pd.DataFrame(handler.otp_qij)],
+                           axis=1)
+    time_frame = time_frame.set_axis(travel_times, axis=1, inplace=False)
+
+    f, ax = plt.subplots(figsize=(7, 5))
+    sns.despine(f)
+
+    colors = ['red', 'blue']
+
+    comp_hist(frame=time_frame, colors=colors, binw=0.2)
+
+    ax.set_title('Histogram for ' + r'$1/qt_{ij}$')
+    ax.set_xlabel('Theoretical velocity in ' + r'$km/h$')
+    ax.margins(x=0)
+    plt.tight_layout()
+    plt.legend()
+    plt.savefig(fname=os.path.join(path_q, 'v_comp'))
     plt.close(f)
 
 
@@ -216,7 +249,7 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
         hb = multiax.hexbin(x=x, y=y, gridsize=50, cmap='cubehelix', mincnt=20,
                              extent=[xmin, xmax, ymin, ymax])
     else:
-        fig, axs = plt.subplots(ncols=1, sharey=True, figsize=(7, 4))
+        fig, axs = plt.subplots(ncols=1, sharey=True, figsize=(9, 6))
         if log == True:
             hb = axs.hexbin(x=x, y=y, gridsize=50, cmap='cubehelix', mincnt=1, bins='log',
                              extent=[xmin, xmax, ymin,ymax])
@@ -226,7 +259,8 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
         cb.set_label('counts')
         axs.set_xlabel(xlabel=xlabel)
         axs.set_ylabel(ylabel=ylabel)
-        #axs.set_title(label=title)
+        axs.set_title(label='Heatscatter of theoretical velocity ' + r'$1/qt_{ij}$' +' for ' + title)
+        #axs.margins(x=0)
 
 
     if av:
@@ -257,18 +291,44 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
     if multi:
         return hb
     else:
-        plt.show()
+        # plt.show()
+
+        plt.tight_layout()
+        plt.savefig(fname=os.path.join(path_q, 'heatscatter_' + title))
+        plt.close(fig)
 
 
-def hist_cluster(handler, mode):
+def hist_clust(data, modes):
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
-    sns.histplot(data=handler.neighborhood_se, x=handler.neighborhood_se[mode])
-    ax.set_title('Clustering coefficient for ' + mode)
-    plt.xlabel('Clustering coefficient')
-    ax.margins(x=0)
+    data = data[modes]
+    data.set_axis(['Bike', 'Public Transport'], axis=1, inplace=True)
+
+    colors = ['red', 'blue']
+
+    comp_hist(frame=data, colors=colors, binw=0.005)
+
+    ax.set_title('Histogram of ' + r'$\widetilde{C}$')
+    ax.set_xlabel('Weighted clustering coefficient')
+    #ax.margins(x=0)
     plt.tight_layout()
     plt.legend()
-    plt.savefig(fname=os.path.join(path_hists, 'cluster_hist' + mode))
+    plt.savefig(fname=os.path.join(path_hists, 'clust_comp'))
+    plt.close(f)
+
+
+def clust_map(data, column, mode):
+    f, ax = plt.subplots(figsize=(8, 8))
+    sns.despine(f)
+
+    geo_plot(frame=data,
+             column=column,
+             axis=ax,
+             legend='Weighted Clustering Coefficient')
+
+    ax.set_title('Spatial distribution of ' + r'$\widetilde{C}$ for ' + mode, fontdict=dict(fontsize=18))
+    ax.margins(x=0)
+    plt.tight_layout()
+    plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode))
     plt.close(f)
 

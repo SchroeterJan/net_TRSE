@@ -5,59 +5,72 @@ from scipy.optimize import curve_fit
 from scipy.stats import gamma
 
 
-def exec_skater():
-    mst_plot(data=Skater(variables=model_variables))
-    skat = Skater()
+def exec_skater(variables, handler):
+    # mst_plot(data=Skater(variables=variables))
+    skat = Skater(variables=variables, handler=handler)
     c = 15
 
     skat.tree_patitioning(c=c, plot=True)
     animate_skater(c)
 
 
-def straightness_centrality():
-    handler.mix_otp_bike()
-    handler.get_q_ij()
-    handler.get_q()
-
-    #geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
-    #                                   geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    #geo_plot(frame=geo_frame, column='q_otp')
-
-    hist_acc_barth(data=handler.neighborhood_se, mode='bike_q')
-    hist_acc_barth(data=handler.neighborhood_se, mode='otp_q')
-    #hist_acc_barth(data=handler.neighborhood_se, mode='mixed_q')
-
-
 def velocity():
     handler.get_q_ij()
+    handler.bike_qij = reject_outliers(flatten(handler.bike_qij), m=12., nan_or_zero='zero')
+    handler.otp_qij = flatten(handler.otp_qij)
 
-    # very conservative correction for outliers 12x standard deviation from median (excempts one connection in noord)
-    hist_qij(matrix=reject_outliers(flatten(handler.bike_qij)), mode='bike')
-    hist_qij(matrix=handler.otp_qij, mode='public transport')
-    #hist_qij(matrix=handler.pt_qij, mode='pt')
-
-    heatscatter(x=flatten(handler.bike_qij),
+    heatscatter(x=flatten(handler.bike),
                 y=flatten(handler.euclid),
-                xlabel='Overcome distance per second',
-                ylabel='Euclidean distance',
-                title='Heatscatter OTP',
+                xlabel='Travel time by Bike in ' + r'$s$',
+                ylabel='Euclidean distance in ' + r'$m$',
+                title='Bike',
                 av=True)
 
+    heatscatter(x=flatten(handler.otp),
+                y=flatten(handler.euclid),
+                xlabel='Travel time by Public Transport in ' + r'$s$',
+                ylabel='Euclidean distance in ' + r'$m$',
+                title='Public Transport',
+                av=True)
 
-def clust():
-    handler.initiate_graph()
-    handler.add_edges(mode='pt')
+    hist_qij(handler=handler, travel_times=travel_times)
 
-    cluster_dict = nx.clustering(handler.graph, weight='weight')
-    handler.neighborhood_se['otp_clust'] = np.array(list(cluster_dict.values()))
 
-    handler.initiate_graph()
-    handler.add_edges(mode='bike')
-    cluster_dict = nx.clustering(handler.graph, weight='weight')
-    handler.neighborhood_se['bike_clust'] = np.array(list(cluster_dict.values()))
+def straightness_centrality():
+    #handler.mix_otp_bike()
+    handler.get_q_ij()
 
-    hist_cluster(handler=handler, mode='otp_clust')
-    hist_cluster(handler=handler, mode='bike_clust')
+    # handler.bike_qij[handler.bike > 2400.0] = 0.0
+    # handler.otp_qij[handler.otp > 3600.0] = 0.0
+    handler.get_q()
+
+    hist_straight(data=handler.neighborhood_se, modes=['bike_q', 'otp_q'])
+
+    geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
+                                       geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+    straight_map(data=geo_frame, column='otp_q', mode='Public Transport')
+    straight_map(data=geo_frame, column='bike_q', mode='Bike')
+
+
+def clust(calc=False):
+    if calc:
+        handler.initiate_graph()
+        handler.add_edges(mode='pt')
+
+        cluster_dict = nx.clustering(handler.graph, weight='weight')
+        handler.neighborhood_se['otp_clust'] = np.array(list(cluster_dict.values()))
+
+        handler.initiate_graph()
+        handler.add_edges(mode='bike')
+        cluster_dict = nx.clustering(handler.graph, weight='weight')
+        handler.neighborhood_se['bike_clust'] = np.array(list(cluster_dict.values()))
+    else:
+        hist_clust(data=handler.neighborhood_se, modes=['bike_clust', 'otp_clust'])
+
+        geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
+                                           geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+        clust_map(data=geo_frame, column='otp_clust', mode='Public Transport')
+        clust_map(data=geo_frame, column='bike_clust', mode='Bike')
 
 
 def investigate_flows():
@@ -113,118 +126,52 @@ def investigate_flows():
     a = 10
 
 
+def skat_all():
+    for var in scaling_variables:
+        handler.scale(var)
+    handler.scale('otp_clust')
+    handler.scale('bike_clust')
+    handler.scale('bike_q')
+    handler.scale('otp_q')
+
+    model_variables.extend(['otp_clust_scaled',
+                           'bike_clust_scaled',
+                           'bike_q_scaled',
+                           'otp_q_scaled'])
 
 
-handler = DataHandling()
-handler.matrices()
-#accessibility_barth()
-velocity()
-# clust()
+
+
+# handler = DataHandling()
+# handler.matrices()
+# velocity()
+# straightness_centrality()
+# clust(calc=True)
 # handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+# handler = DataHandling(new=True)
+# handler.matrices()
+#
+# clust()
+
 handler = DataHandling(new=True)
 handler.matrices()
 
+for var in scaling_variables:
+    handler.scale(var)
+
+exec_skater(variables=model_variables, handler=handler)
+
+handler.bike[handler.bike > 2400.0] = np.nan
+handler.otp[handler.otp > 2400.0] = np.nan
+straightness_centrality()
+# clust()
+
+skat_all()
+exec_skater(variables=model_variables, handler=handler)
+
+a = 0
+
+
 investigate_flows()
 
-# otp_long = (flatten(handler.otp.values) > 3600.0).sum()
-# otp_long_flows = handler.flows.values.flatten()[handler.otp.values.flatten() > 3600.0]
 
-
-bike_long = (flatten(handler.bike) > 1800.0).sum()
-
-handler.otp[handler.otp > 3600.0] = np.nan
-a = 1
-
-
-
-
-a = 10
-#clust()
-
-
-def reduce_se_variables():
-    census_variables.remove('BEVTOTAAL')
-    census_variables.remove('SKSES_GEM')
-
-
-# get total in- and outbound passenger flow for each stop
-def stop_flows():
-    path_stopflows = os.path.join(path_experiments, 'stop_flows.csv')
-    # follow the data preparation steps up to the assignment algorithm
-    flow_prep = PassengerCounts()
-    flow_prep.area_stop_matching()
-    flow_prep.filter_connections()
-
-    # cast flows to integer, "coerce" sets non integer values to nan
-    flow_prep.pass_data[column_names['pass_vol']] = \
-        pd.to_numeric(flow_prep.pass_data[column_names['pass_vol']], errors='coerce')
-    # group by stop and sum the flows for both origin and destination
-    or_sum = flow_prep.pass_data.groupby([column_names['pass_or']]).sum()
-    dest_sum = flow_prep.pass_data.groupby([column_names['pass_dest']]).sum()
-    # join sums to stop list
-    flow_prep.stops = flow_prep.stops.set_index(keys=column_names['stop_name'], drop=True)
-    flow_prep.stops = flow_prep.stops.join(or_sum)
-    flow_prep.stops = flow_prep.stops.join(dest_sum, rsuffix='dest_flows')
-    # write stop list to disk
-    flow_prep.stops.columns = [column_names['stop_lat'], column_names['stop_lng'], 'or_flows', 'dest_flows']
-    flow_prep.stops.to_csv(path_or_buf=path_stopflows, sep=';', index=True)
-
-
-# calculate all differences between entries of a given vector
-def difference_vector(vector):
-    edges = []
-    for i, value_i in enumerate(vector):
-        for j, value_j in enumerate(vector[i + 1:]):
-            edges.append(np.absolute(value_i - value_j))
-    return np.array(edges)
-
-
-# form difference matrices for socio-economic variables
-def se_matrices():
-    builder = ODPrep()
-    for variable in census_variables:
-        matrix = difference_vector(handler.neighborhood_se[variable])
-        matrix = builder.build_matrix(length=len(handler.neighborhood_se[variable]), data_list=list(matrix))
-        matrix = pd.DataFrame(data=matrix,
-                              index=handler.neighborhood_se[column_names['geo_id_col']],
-                              columns=handler.neighborhood_se[column_names['geo_id_col']])
-        matrix.to_csv(path_or_buf=os.path.join(path_experiments, 'matrix_' + variable), sep=';', index=True)
-
-
-# CLUSTERING
-def cluster_all():
-    clusters['pt_all'] = analyzer.clustering(matrix=handler.pt.to_numpy())
-    clusters['bike_all'] = analyzer.clustering(matrix=handler.bike.to_numpy())
-    clusters['flows_all'] = analyzer.clustering(matrix=handler.flows.to_numpy())
-
-
-def cluster_rel():
-    unused = np.where(np.isnan(handler.flows.to_numpy()))
-    clust_pt = np.array(handler.pt)
-    clust_pt[unused[0], unused[1]] = 0.0
-    clust_bike = np.array(handler.bike)
-    clust_bike[unused[0], unused[1]] = 0.0
-    clusters['pt_rel'] = analyzer.clustering(matrix=clust_pt)
-    clusters['bike_rel'] = analyzer.clustering(matrix=clust_bike)
-
-
-def get_cluster():
-    if os.path.isfile(path_clustercoeff):
-        clusters = pd.read_csv(filepath_or_buffer=path_clustercoeff, sep=';')
-    else:
-        clusters = pd.DataFrame(index=handler.neighborhood_se.index)
-        cluster_all()
-        cluster_rel()
-        clusters.to_csv(path_or_buf=path_clustercoeff, sep=';', index=False)
-    return clusters
-
-
-
-
-
-
-
-
-# stop_flows()
-# se_matrices()
-# clusters = get_cluster()

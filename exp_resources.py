@@ -2,6 +2,32 @@ from plotting.plots import *
 
 import math
 
+travel_times = ['Bike', 'Public Transport']
+
+def flatten(x):
+    x = x.flatten()
+    x = x[~np.isnan(x)]
+    return x
+
+
+def gaussian(x, mean, amplitude, standard_deviation):
+    return amplitude * np.exp( - (x - mean)**2 / (2*standard_deviation ** 2))
+
+
+def lognorm(x, mu, sigma) :
+   return 1/((x-sigma)*(np.sqrt(2*np.pi)*sigma))*np.exp(-((np.log(x-sigma)-
+   mu)**2)/(2*sigma**2))
+
+
+def reject_outliers(data, m=12., nan_or_zero=None):
+    # set values who differ more than 12 times the standart deviation from the mean to np.nan or 0.0
+    if nan_or_zero == 'nan':
+        new = np.nan
+    elif nan_or_zero == 'zero':
+        new = 0.0
+    data[abs(data - np.mean(data)) > m * np.std(data)] = new
+    return data
+
 
 class DataHandling:
 
@@ -25,7 +51,6 @@ class DataHandling:
         self.otp = pd.read_csv(filepath_or_buffer=path_otp_matrix, sep=';', index_col=0)
         self.euclid = pd.read_csv(filepath_or_buffer=path_euclid_matrix, sep=';', index_col=0)
 
-
     def matrices(self):
         # flows are generated distinct for journey to and from
         #self.flows = self.reduce_matrix(self.flows)
@@ -40,19 +65,11 @@ class DataHandling:
         for i, j in enumerate(short[0]):
             self.mixed[j, short[1][i]] = self.bike[j, short[1][i]]
 
-    # def scale(self):
-    #     for var in scaling_variables:
-    #         max_val = max(self.neighborhood_se[var])
-    #         scaled = [100.0*(each/max_val) for each in self.neighborhood_se[var]]
-    #         self.neighborhood_se[var + '_scaled'] = scaled
-
-    def build_speed_vector(self, variable, euclid, name):
-        speed = []
-        for i, each in enumerate(euclid):
-            speed = (each*1000.0)/(variable[i]/60.0)
-            speed.append(speed)
-
-        #pickle.dump(np.array(speed), open(name + "_speed.p", "wb"))
+    def scale(self, var):
+        self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(), m=5., nan_or_zero='nan')
+        max_val = max(self.neighborhood_se[var])
+        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[var]]
+        self.neighborhood_se[var + '_scaled'] = scaled
 
     def reduce_matrix(self, frame):
         matrix = np.triu(m=frame.to_numpy(), k=0)
@@ -93,6 +110,7 @@ class DataHandling:
 
     def add_edges(self, mode):
         matrix = self.choose_mode(mode=mode)
+        matrix = np.nan_to_num(matrix)
         # create edges between all nodes and populate them with travel times as weights
         for i, row in enumerate(matrix):
             for j, value in enumerate(row[i+1:]):
@@ -104,9 +122,8 @@ class DataHandling:
 
 class Skater:
 
-    def __init__(self, variables):
+    def __init__(self, variables, handler):
         print("Initializing " + self.__class__.__name__)
-        handler = DataHandling()
         # areas into geopandas DataFrame
         self.geo_df = geopandas.GeoDataFrame(crs=crs_proj,
                                              geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
@@ -411,23 +428,7 @@ class Skater:
 #     geo_net_plot(geo_frame=geo_df, graph=walked_graph)
 #     a=1
 
-def flatten(x):
-    x = x.flatten()
-    x = x[~np.isnan(x)]
-    return x
 
-
-def gaussian(x, mean, amplitude, standard_deviation):
-    return amplitude * np.exp( - (x - mean)**2 / (2*standard_deviation ** 2))
-
-
-def lognorm(x, mu, sigma) :
-   return 1/((x-sigma)*(np.sqrt(2*np.pi)*sigma))*np.exp(-((np.log(x-sigma)-
-   mu)**2)/(2*sigma**2))
-
-
-def reject_outliers(data, m=12.):
-    return data[abs(data - np.mean(data)) < m * np.std(data)]
 
 
 
