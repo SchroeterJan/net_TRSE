@@ -1,5 +1,6 @@
 from prep_resources import *
 
+import matplotlib
 from matplotlib import pyplot as plt
 import mapclassify
 import seaborn as sns
@@ -24,9 +25,9 @@ def geo_plot(frame, column=None, axis=None, legend=None):
 
 def meanline(data, variable=None, x=1):
     if isinstance(data, pd.DataFrame):
-        plt.axvline(data[variable].mean(), color='k', linestyle='dashed', linewidth=1)
+        plt.axvline(np.nanmean(data[variable].to_numpy()), color='k', linestyle='dashed', linewidth=1)
     elif isinstance(data, np.ndarray):
-        plt.axvline(data.flatten().mean(), color='k', linestyle='dashed', linewidth=1)
+        plt.axvline(np.nanmean(data.flatten()), color='k', linestyle='dashed', linewidth=1)
     min_ylim, max_ylim = plt.ylim()
     plt.text(data[variable].mean() * 1.1,
              max_ylim * (1 - 0.1 * x),
@@ -62,3 +63,13 @@ def multi_plot(shape, suptitle='', ytext='', xtext=''):
     fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
     return fig, axes
 
+
+def hilo(a, b, c):
+    if c < b: b, c = c, b
+    if b < a: a, b = b, a
+    if c < b: b, c = c, b
+    return a + c
+
+def complement(r, g, b):
+    k = hilo(r, g, b)
+    return tuple(k - u for u in (r, g, b))

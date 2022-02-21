@@ -7,8 +7,6 @@ plt.rc('font', size=24)
 sns.set_theme(style="ticks")
 
 
-
-
 def hist_modes(handler, travel_times):
     time_frame = pd.DataFrame(columns=travel_times)
     time_frame[travel_times[0]] = handler.bike.flatten()
@@ -47,6 +45,7 @@ def hist_flows(handler):
 
 
 def hist_se(handler):
+    se_names = [r'$Ed_L$', r'$Ed_M$', r'$Ed_H$', r'$In$', r'$UE$']
     for i, variable in enumerate(census_variables):
         f, ax = plt.subplots(figsize=(7, 5))
         sns.despine(f)
@@ -54,7 +53,7 @@ def hist_se(handler):
         handler.neighborhood_se[variable] = handler.neighborhood_se[variable].replace(to_replace=0.0, value=np.nan)
         sns.histplot(data=handler.neighborhood_se, x=variable)
         meanline(data=handler.neighborhood_se, variable=variable, x=i + 1)
-        ax.set_title('Histogram of ' + variable)
+        ax.set_title('Distribution of ' + se_names[i])
         ax.margins(x=0)
         plt.tight_layout()
         plt.savefig(fname=os.path.join(path_hist_se, variable + '_hist'))
@@ -150,7 +149,7 @@ def hist_qij(handler, travel_times):
 
 def mst_plot(data):
     fig, ax = plt.subplots(figsize=(20, 15))
-    geo_plot(frame=data.geo_df, axis=ax, cmap='tab20')
+    ax = data.geo_df.plot()
     ax.set_title('MST for SKATER', fontsize=40)
     nx.drawing.nx_pylab.draw_networkx_edges(G=data.mst(), pos=data.pos, ax=ax, width=2.0)
     plt.tight_layout()
