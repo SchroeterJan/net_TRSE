@@ -1,22 +1,112 @@
 from exp_resources import *
 
-from scipy.optimize import curve_fit
 
-from scipy.stats import gamma
+import pickle
 
 
-def exec_skater(variables, handler):
-    # mst_plot(data=Skater(variables=variables))
-    skat = Skater(variables=variables, handler=handler)
-    c = 15
+def exec_skater():
+    # mst_plot(data=Skater(variables=variables, handler=handler))
+    skat = Skater(handler=handler)
+    c = 19
 
-    skat.tree_patitioning(c=c, plot=True)
+    comps = skat.tree_patitioning(c=c, plot=True)
+    pickle.dump(comps, open(os.path.join(path_experiments, 'comps_se.p'), "wb"))
+
     animate_skater(c)
+
+
+def plot_skater(variables):
+    skat = Skater(variables=variables, handler=handler)
+    comps = pickle.load(open(os.path.join(path_experiments, 'comps_se.p'), "rb"))
+    comp_stat_index = list(range(1, 21))
+    comp_stat_index.append('overall')
+    comp_stat = pd.DataFrame(columns=['Compartment',
+                                      '#Vertices',
+                                      'SSD',
+                                      'SSD/Vertice',
+                                      variables[0] + '_av',
+                                      variables[0] + '_std',
+                                      variables[1] + '_av',
+                                      variables[1] + '_std',
+                                      variables[2] + '_av',
+                                      variables[2] + '_std',
+                                      variables[3] + '_av',
+                                      variables[3] + '_std',
+                                      variables[4] + '_av',
+                                      variables[4] + '_std',
+    #                                 'otp_clust' + '_av',
+    #                                 'otp_clust' + '_std',
+    #                                 'bike_clust' + '_av',
+    #                                 'bike_clust' + '_std',
+    #                                 'bike_q' + '_av',
+    #                                 'bike_q' + '_std',
+    #                                 'otp_q' + '_av',
+    #                                 'otp_q' + '_std'
+                                      ],
+                             index=comp_stat_index)
+
+    # comp_stat = pd.DataFrame(columns=['Compartment',
+    #                                   '#Vertices',
+    #                                   'SSD',
+    #                                   'otp_clust' + '_av',
+    #                                   'otp_clust' + '_std',
+    #                                   'bike_clust' + '_av',
+    #                                   'bike_clust' + '_std',
+    #                                   'bike_q' + '_av',
+    #                                   'bike_q' + '_std',
+    #                                   'otp_q' + '_av',
+    #                                   'otp_q' + '_std'],
+    #                          index=list(range(1, 20)))
+
+    colors = skat.plot_clust_init()
+    # skat.ax.set_title('Regionalization of Network Properties for Accessibility',
+    #                   fontsize=40)
+    skat.ax.set_title('Regionalization of Socioeconomic Variables',
+                      fontsize=40)
+    for i, comp in enumerate(comps):
+        stat_list = [str(i +1)]
+        stat_list.append(len(comp.nodes()))
+        comp_df = skat.model_df.loc[list(comp.nodes())]
+        stat_list.append(round(skat.ssd(k=comp, x=comp_df), 2))
+        stat_list.append(round(stat_list[-1]/stat_list[-2], 2))
+        for var in variables:
+            stat_list.append(round(comp_df[var].mean(axis=0), 2))
+            stat_list.append(round(comp_df[var].std(axis=0), 2))
+
+        comp_stat.loc[i+1] = stat_list
+        for node in list(comp.nodes()):
+            skat.geo_df.at[node, 'clust'] = i + 1
+        comp_geo = skat.geo_df.loc[list(comp.nodes())]
+        # comp_geo.dissolve().plot(ax=skat.ax, color=colors[i+2])
+        comp_geo.plot(ax=skat.ax, color=colors[i +1])
+        plt.text(s=str(i+1),
+                 x=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[0],
+                 y=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[1],
+                 horizontalalignment='center',
+                 fontsize=26,
+                 color='k')
+
+
+    # city_parts = geopandas.read_file(os.path.join(dir_raw, 'stadsdelen all 2022-02-17 11.31.06.geojson'))
+    # city_parts.boundary.plot(ax=skat.ax)
+
+    skat.ax.set_axis_off()
+    plt.tight_layout()
+
+
+    # plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_se_part_comp'))
+    plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_se_new'))
+    # plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_all'))
+    comp_all = ['overall']
+    comp_all.extend(round(comp_stat.mean(axis=0), 2))
+    comp_stat.loc['mean'] = comp_all
+    print(comp_stat.to_latex(index=False))
+    a =1
 
 
 def velocity():
     handler.get_q_ij()
-    handler.bike_qij = reject_outliers(flatten(handler.bike_qij), m=12., nan_or_zero='zero')
+    handler.bike_qij = reject_outliers(flatten(handler.bike_qij), m=12.)
     handler.otp_qij = flatten(handler.otp_qij)
 
     heatscatter(x=flatten(handler.bike),
@@ -73,71 +163,27 @@ def clust(calc=False):
         clust_map(data=geo_frame, column='bike_clust', mode='Bike')
 
 
-def investigate_flows():
-    bin_heights, bin_borders, _ = plt.hist(flatten(handler.euclid), bins='auto')
-    bin_widths = np.diff(bin_borders)
-    plt.close()
-    bin_centers = bin_borders[:-1] + np.diff(bin_borders) / 2
-
-    y1 = bin_heights / np.trapz(bin_centers, bin_heights)
-
-    fit_alpha, fit_loc, fit_beta = gamma.fit(flatten(handler.euclid))
-    x = np.linspace(gamma.ppf(0.01, fit_alpha), gamma.ppf(0.99, fit_alpha), 100)
-    rv = gamma(fit_alpha)
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(x, rv.pdf(x), 'k-', lw=2, label='frozen pdf')
-    #plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
-    #ax.hist(flatten(handler.euclid), density=True, histtype='stepfilled', alpha=0.2)
-    plt.show()
-
-
-    a = 1.99
-    mean, var, skew, kurt = gamma.stats(a, moments='mvsk')
-    x = np.linspace(gamma.ppf(0.01, a), gamma.ppf(0.99, a), 100)
-
-
-    vals = gamma.ppf([0.001, 0.5, 0.999], a)
-    print(np.allclose([0.001, 0.5, 0.999], gamma.cdf(vals, a)))
-    plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
-    plt.show()
-    a = 10
-
-
-
-
-
-
-
-    params, _ = curve_fit(lognorm, bin_centers, -y1)
-    #x_interval_for_fit = np.linspace(bin_borders[0], bin_borders[-1], 20000)
-    plt.figure()
-    plt.bar(bin_centers, -y1, width=bin_widths, label='histogram')
-    #plt.plot(bin_centers, -y1, 'o')
-    plt.plot(bin_centers, lognorm(bin_centers, params[0], params[1]), label='fit', c='red')
-    plt.legend()
-    plt.show()
-    a = 10
-
-
-    total_flows = np.triu(np.triu(handler.flows.values, k=0) + np.tril(handler.flows.values, k=0).T)
-    reached = total_flows > 0.0
-    reached[handler.bike < 600] = True
-    dist_flows = handler.euclid[reached]
-    a = 10
 
 
 def skat_all():
-    for var in scaling_variables:
-        handler.scale(var)
     handler.scale('otp_clust')
     handler.scale('bike_clust')
     handler.scale('bike_q')
     handler.scale('otp_q')
 
-    model_variables.extend(['otp_clust_scaled',
-                           'bike_clust_scaled',
-                           'bike_q_scaled',
-                           'otp_q_scaled'])
+
+def skat_transp():
+    handler.scale('otp_clust')
+    handler.scale('bike_clust')
+    handler.scale('bike_q')
+    handler.scale('otp_q')
+
+    return ['otp_clust_scaled',
+                            'bike_clust_scaled',
+                            'bike_q_scaled',
+                            'otp_q_scaled']
+
+
 
 
 
@@ -156,22 +202,18 @@ def skat_all():
 handler = DataHandling(new=True)
 handler.matrices()
 
-for var in scaling_variables:
-    handler.scale(var)
+# handler.bike[handler.bike > 2400.0] = np.nan
+# handler.otp[handler.otp > 2400.0] = np.nan
+# straightness_centrality()
 
-exec_skater(variables=model_variables, handler=handler)
+# skat_all()
+handler.stat_prep(model_variables=census_variables)
 
-handler.bike[handler.bike > 2400.0] = np.nan
-handler.otp[handler.otp > 2400.0] = np.nan
-straightness_centrality()
+# plot_skater(model_variables)
+# plot_skater(variables=skat_transp())
+exec_skater()
+
+
 # clust()
-
-skat_all()
-exec_skater(variables=model_variables, handler=handler)
-
-a = 0
-
-
-investigate_flows()
 
 

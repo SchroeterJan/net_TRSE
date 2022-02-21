@@ -58,11 +58,6 @@ def flows():
     a = 1
 
 
-
-
-
-
-# areas()
-# flows()
-# od_matrices()
-acc_barth()
+areas()
+flows()
+od_matrices()
