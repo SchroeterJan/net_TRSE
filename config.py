@@ -37,10 +37,6 @@ exclude_stops = vars['exclude_stops']
 # identifiers for relevant census variables
 census_variables = vars['census_variables']
 
-scaling_variables = vars['scaling_variables']
-
-model_variables = vars['model_variables']
-
 # limit for Population density in people/km^2
 min_popdens = vars['min_popdens']
 # year of interest for Census data
