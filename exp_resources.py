@@ -1,6 +1,7 @@
 from plotting.plots import *
 
 import math
+from sklearn import preprocessing
 
 travel_times = ['Bike', 'Public Transport']
 
@@ -10,22 +11,14 @@ def flatten(x):
     return x
 
 
-def gaussian(x, mean, amplitude, standard_deviation):
-    return amplitude * np.exp( - (x - mean)**2 / (2*standard_deviation ** 2))
-
-
-def lognorm(x, mu, sigma) :
-   return 1/((x-sigma)*(np.sqrt(2*np.pi)*sigma))*np.exp(-((np.log(x-sigma)-
-   mu)**2)/(2*sigma**2))
-
-
-def reject_outliers(data, m=12., nan_or_zero=None):
-    # set values who differ more than 12 times the standart deviation from the mean to np.nan or 0.0
-    if nan_or_zero == 'nan':
-        new = np.nan
-    elif nan_or_zero == 'zero':
-        new = 0.0
-    data[abs(data - np.mean(data)) > m * np.std(data)] = new
+def reject_outliers(data, m):
+    # set values who differ more than m times the standart deviation
+    nancount = 0
+    for each in data:
+        if np.isnan(each):
+            nancount += 1
+    outliers = abs(data - np.nanmean(data)) > m * np.nanstd(data)
+    data[outliers] = np.nanmax(data[~outliers])
     return data
 
 
@@ -65,11 +58,21 @@ class DataHandling:
         for i, j in enumerate(short[0]):
             self.mixed[j, short[1][i]] = self.bike[j, short[1][i]]
 
-    def scale(self, var):
-        self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(), m=5., nan_or_zero='nan')
-        max_val = max(self.neighborhood_se[var])
-        scaled = [100.0*(each/max_val) for each in self.neighborhood_se[var]]
-        self.neighborhood_se[var + '_scaled'] = scaled
+    def stat_prep(self, model_variables):
+        for var in model_variables:
+            self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(),
+                                                        m=5.0)
+        self.model_ = self.neighborhood_se[model_variables]
+        x = self.model_.values
+        min_max_scaler = preprocessing.MinMaxScaler()
+        x_scaled = min_max_scaler.fit_transform(x)
+        self.model_ = pd.DataFrame(data=x_scaled,
+                                         columns=self.model_.columns,
+                                         index=self.model_.index)
+        #
+        # max_val = max(self.neighborhood_se[var])
+        # if scale:
+        #     self.neighborhood_se[var] = [100.0*(each/max_val) for each in self.neighborhood_se[var]]
 
     def reduce_matrix(self, frame):
         matrix = np.triu(m=frame.to_numpy(), k=0)
@@ -122,7 +125,7 @@ class DataHandling:
 
 class Skater:
 
-    def __init__(self, variables, handler):
+    def __init__(self, handler):
         print("Initializing " + self.__class__.__name__)
         # areas into geopandas DataFrame
         self.geo_df = geopandas.GeoDataFrame(crs=crs_proj,
@@ -135,7 +138,7 @@ class Skater:
         self.geo_pos()
 
         # create DataFrame containing relevant socio-economic variables for the model
-        self.model_df = handler.neighborhood_se[variables]
+        self.model_df = handler.model_
 
     def geo_pos(self):
         # get positions of nodes to make the graph spatial
@@ -180,13 +183,14 @@ class Skater:
             S = [self.adj_g.subgraph(c).copy() for c in nx.connected_components(self.adj_g)]
 
     def adjacency_graph(self):
-        # create adjacency matrix for all areas
+
 
         # check for invalid polygons and apply simple fix according to https://stackoverflow.com/questions/20833344/fix-invalid-polygon-in-shapely
         for i, pol in enumerate(self.geo_df.geometry):
             if not pol.is_valid:
                 self.geo_df.geometry[i] = pol.buffer(0)
 
+        # create adjacency matrix for all areas
         mat = np.invert(np.array([self.geo_df.geometry.disjoint(pol) for pol in self.geo_df.geometry]))
         # correct for self-loops
         np.fill_diagonal(a=mat, val=False)
@@ -294,8 +298,7 @@ class Skater:
 
         self.fig, self.ax = plt.subplots(figsize=(20, 15))
         self.ax.set_aspect('equal')
-        self.ax.set_title('SKATER clustering', fontsize=40)
-        self.geo_df.boundary.plot(ax=self.ax, edgecolor='black')
+        # self.geo_df.boundary.plot(ax=self.ax, edgecolor='black')
         self.ax.set_axis_off()
 
         return colors
@@ -304,7 +307,7 @@ class Skater:
     def tree_patitioning(self, c, plot=False):
         print('Start tree partitioning')
         components = [self.mst()]
-        sc = 20
+        sc = 25
         if plot:
             colors = self.plot_clust_init()
             self.geo_df['clust'] = 0
@@ -315,8 +318,9 @@ class Skater:
         for clust in range(c):
             best_edges = []
             best_edges_values = []
-            print('Test component for split')
+            print('forming cluster ' + str(clust))
             for t in components:
+                print('Test component for split')
                 # get all possible solutions for finding the starting vertice by iteration over all edges of the MST
                 s_p_1 = self.potential_solution(edges=t.edges(), graph=t)
                 # calculate difference in number of vertices between two subtrees of a possible split
@@ -378,7 +382,14 @@ class Skater:
                     self.geo_df.at[node, 'clust'] = clust + 1
                 comp_geo = self.geo_df.loc[list(components[-1].nodes())]
                 comp_geo.plot(ax=self.ax, color=colors[clust+2])
+                # plt.text(s='2',
+                #          x=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[0],
+                #          y=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[1],
+                #          horizontalalignment='center',
+                #          fontsize=22,
+                #          color='k')
                 self.ax.set_axis_off()
+                self.ax.set_title('SKATER clustering', fontsize=40)
                 plt.tight_layout()
                 plt.savefig(fname=os.path.join(path_skater, 'c_' + str(clust + 1)))
 
