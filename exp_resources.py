@@ -5,6 +5,7 @@ from sklearn import preprocessing
 
 travel_times = ['Bike', 'Public Transport']
 
+
 def flatten(x):
     x = x.flatten()
     x = x[~np.isnan(x)]
@@ -58,10 +59,32 @@ class DataHandling:
         for i, j in enumerate(short[0]):
             self.mixed[j, short[1][i]] = self.bike[j, short[1][i]]
 
+    def edu_score(self):
+        edu_ = self.neighborhood_se[census_variables[:3]].values
+        scores = []
+        for row in edu_:
+            score = 0
+            if np.nansum(row) == 100.0:
+                score = row[0]*3 + row[1] * 2 + row[2] * 1
+            else:
+                for i, val in enumerate(row):
+                    if np.isnan(val):
+                        continue
+                    else:
+                        score += val * (i+1)
+                score += 100.0 - np.nansum(row)
+            scores.append(score)
+        self.neighborhood_se['edu_score'] = scores
+
+
+
+
+
     def stat_prep(self, model_variables):
         for var in model_variables:
             self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(),
                                                         m=5.0)
+
         self.model_ = self.neighborhood_se[model_variables]
         x = self.model_.values
         min_max_scaler = preprocessing.MinMaxScaler()
@@ -125,11 +148,10 @@ class DataHandling:
 
 class Skater:
 
-    def __init__(self, handler):
+    def __init__(self, model, geo_frame):
         print("Initializing " + self.__class__.__name__)
         # areas into geopandas DataFrame
-        self.geo_df = geopandas.GeoDataFrame(crs=crs_proj,
-                                             geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+        self.geo_df = geo_frame
         # self.geo_df['lon'] = self.geo_df['centroid'].apply(lambda p: p.x)
         # self.geo_df['lat'] = self.geo_df['centroid'].apply(lambda p: p.y)
 
@@ -138,7 +160,7 @@ class Skater:
         self.geo_pos()
 
         # create DataFrame containing relevant socio-economic variables for the model
-        self.model_df = handler.model_
+        self.model_df = model
 
     def geo_pos(self):
         # get positions of nodes to make the graph spatial
@@ -395,52 +417,6 @@ class Skater:
 
 
         return components
-
-
-# def filter_shorttrips():
-#     walked = handler.reduce_matrix(frame=handler.bike)
-#     walked = np.where(walked < short_trip)
-#     walked_graph = nx.Graph()
-#     index_list = list(handler.neighborhood_se.index)
-#     reduced_otp = handler.reduce_matrix(frame=handler.otp)
-#     reduced_pt = handler.reduce_matrix(frame=handler.pt)
-#     reduced_bike = handler.reduce_matrix(frame=handler.bike)
-#     for i, or_ind in enumerate(walked[0]):
-#         dest_ind = walked[1][i]
-#         walked_graph.add_edge(u_of_edge=index_list[or_ind], v_of_edge=index_list[dest_ind])
-#         reduced_pt[or_ind][dest_ind] = np.nan
-#         reduced_otp[or_ind][dest_ind] = np.nan
-#         reduced_bike[or_ind][dest_ind] = np.nan
-#
-#     reduced_otp = np.floor(reduced_otp/60.)*60.
-#     time_frame = pd.concat([pd.DataFrame(reduced_otp[~np.isnan(reduced_otp)], columns=['otp']),
-#                             pd.DataFrame(reduced_pt[~np.isnan(reduced_pt)], columns=['pt'])], axis=1)
-#
-#     #comp_hist(frame=time_frame, colors=['red', 'blue'])
-#     #plt.hist(reduced_pt[~np.isnan(reduced_pt)], bins=50, fc=(0, 0, 1, 0.5))
-#     # floor_diff = abs(reduced_otp-reduced_pt)
-#     # floor_diff_pt = floor_diff/reduced_pt
-#     # floor_diff_pt = floor_diff_pt[~np.isnan(floor_diff_pt)]
-#     # floor_diff_otp = floor_diff/reduced_otp
-#     # floor_diff_otp = floor_diff_otp[~np.isnan(floor_diff_otp)]
-#     # plt.hist(floor_diff_pt, bins=70, range=(0, 1))
-#     # plt.tight_layout()
-#     # plt.savefig(fname=os.path.join(path_explore, 'pt_diff3'))
-#     # plt.close()
-#     # plt.hist(floor_diff_otp, bins=70, range=(0, 1))
-#     # plt.tight_layout()
-#     # plt.savefig(fname=os.path.join(path_explore, 'pt_diff4'))
-#     # plt.close()
-#
-#     a = 10
-#
-#     geo_df = geopandas.GeoDataFrame(crs=crs_proj,
-#                                     geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-#     geo_net_plot(geo_frame=geo_df, graph=walked_graph)
-#     a=1
-
-
-
 
 
 # hist_scaled_se()
