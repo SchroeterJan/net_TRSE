@@ -7,9 +7,6 @@ import seaborn as sns
 import networkx as nx
 
 
-
-
-
 def geo_plot(frame, column=None, axis=None, legend=None):
     if axis != None:
         axis.set_axis_off()

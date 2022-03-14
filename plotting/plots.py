@@ -1,6 +1,7 @@
 from plotting.plot_functions import *
 import matplotlib.image as mgimg
 from matplotlib import animation
+import matplotlib.colors as mcolors
 
 plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
@@ -60,18 +61,6 @@ def hist_se(handler):
         plt.close(f)
 
 
-def hist_scaled_se(handler):
-    for variable in scaling_variables:
-        f, ax = plt.subplots(figsize=(7, 5))
-        sns.despine(f)
-        sns.histplot(data=handler.neighborhood_se, x=variable + '_scaled')
-        ax.set_title('Histogram of ' + variable + '_scaled')
-        ax.margins(x=0)
-        plt.tight_layout()
-        plt.savefig(fname=os.path.join(path_hists, variable + '_scaled_hist'))
-        plt.close(f)
-
-
 def se_maps(handler):
     geo_frame = geopandas.GeoDataFrame(geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
     fig, axes = multi_plot(shape=[2, 3])
@@ -124,7 +113,6 @@ def straight_map(data, column, mode):
     plt.close(f)
 
 
-
 def hist_qij(handler, travel_times):
     # time_frame = pd.DataFrame(columns=travel_times)
     time_frame = pd.concat([pd.DataFrame(handler.bike_qij), pd.DataFrame(handler.otp_qij)],
@@ -157,48 +145,29 @@ def mst_plot(data):
     plt.close(fig)
 
 
-# def plot_skat_clust(skat, components):
-#     colors = {1: 'tab:blue',
-#               2: 'lightsteelblue',
-#               3: 'tab:orange',
-#               4: 'moccasin',
-#               5: 'tab:green',
-#               6: 'mediumseagreen',
-#               7: 'tab:red',
-#               8: 'salmon',
-#               9: 'tab:purple',
-#               10: 'plum',
-#               11: 'tab:brown',
-#               12: 'sandybrown',
-#               13: 'tab:pink',
-#               14: 'palevioletred',
-#               15: 'tab:gray',
-#               16: 'lightgray',
-#               17: 'tab:olive',
-#               18: 'gold',
-#               19: 'tab:cyan',
-#               20: 'aquamarine'}
-#
-#     skat.geo_df['clust'] = 0
-#     fig, ax = plt.subplots(figsize=(20, 15))
-#     ax.set_aspect('equal')
-#     ax.set_title('SKATER clustering', fontsize=40)
-#     skat.geo_df.boundary.plot(ax=ax, edgecolor='black')
-#     ax.set_axis_off()
-#
-#     skat.geo_df.plot(ax=ax, color=colors[1])
-#     plt.tight_layout()
-#     plt.savefig(fname=os.path.join(path_skater, 'c_0'))
-#
-#
-#     for i, comp in enumerate(components):
-#         for node in list(comp.nodes()):
-#             skat.geo_df.at[node, 'clust'] = i + 1
-#         comp_geo = skat.geo_df.loc[list(comp.nodes())]
-#         comp_geo.plot(ax=ax, color=colors[i + 2])
-#         ax.set_axis_off()
-#         plt.tight_layout()
-#         plt.savefig(fname=os.path.join(path_skater, 'c_' + str(i + 1)))
+def skat_plot(data):
+    data.gdf['skater_new'] = data.labels_
+
+    colors1 = plt.cm.tab20b(np.linspace(0., 1, 128))
+    colors2 = plt.cm.tab20c(np.linspace(0, 1, 128))
+
+    colors = np.vstack((colors1, colors2))
+    mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
+
+    ax = data.gdf.plot(column='skater_new', categorical=True, figsize=(12, 8), edgecolor='w', cmap=mymap)
+    ax.set_title('Regionalization by Socioeconomic Variables', fontsize=22)
+    ax.set_axis_off()
+
+    for l in range(len(np.unique(data.labels_))):
+        plt.text(s=str(l + 1),
+                 x=np.array(data.gdf[data.labels_ == l].dissolve().representative_point()[0].coords.xy)[0],
+                 y=np.array(data.gdf[data.labels_ == l].dissolve().representative_point()[0].coords.xy)[1],
+                 horizontalalignment='center',
+                 color='k')
+
+    plt.tight_layout()
+    plt.savefig(fname=os.path.join(path_maps, 'skat_clust'))
+    plt.close()
 
 
 def animate_skater(c):
@@ -225,7 +194,6 @@ def animate_skater(c):
 
     ## Showtime!
     #plt.show()
-
 
 
 def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av=False, multiax=False):
