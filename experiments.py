@@ -1,111 +1,31 @@
 from exp_resources import *
 
+from libpysal import weights
+from sklearn.metrics import pairwise as skm
+from spopt.region import skater as skat_lib
+from scipy import spatial
+import warnings
+
+
 import pickle
 
 
-def exec_skater():
-    # mst_plot(data=Skater(variables=variables, handler=handler))
-    geo_df = geopandas.GeoDataFrame(crs=crs_proj,
-                                    geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    skat = Skater(model=handler.model_, geo_frame=geo_df)
-    c = 19
+def investigate(self, data):
 
-    comps = skat.tree_patitioning(c=c, plot=True)
-    pickle.dump(comps, open(os.path.join(path_experiments, 'comps_se.p'), "wb"))
-
-    animate_skater(c)
-
-
-def plot_skater():
-    geo_df = geopandas.GeoDataFrame(crs=crs_proj,
-                                    geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    skat = Skater(model=handler.model_, geo_frame=geo_df)
-    comps = pickle.load(open(os.path.join(path_experiments, 'comps_se.p'), "rb"))
-    comp_stat_index = list(range(1, 20))
-    comp_stat_index.append('overall')
-    comp_stat = pd.DataFrame(columns=['Compartment',
-                                      '#Vertices',
-                                      'SSD',
-                                      'SSD/Vertice',
-                                      census_variables[0] + '_av',
-                                      census_variables[0] + '_std',
-                                      census_variables[1] + '_av',
-                                      census_variables[1] + '_std',
-                                      census_variables[2] + '_av',
-                                      census_variables[2] + '_std',
-                                      census_variables[3] + '_av',
-                                      census_variables[3] + '_std',
-                                      census_variables[4] + '_av',
-                                      census_variables[4] + '_std',
-    #                                 'otp_clust' + '_av',
-    #                                 'otp_clust' + '_std',
-    #                                 'bike_clust' + '_av',
-    #                                 'bike_clust' + '_std',
-    #                                 'bike_q' + '_av',
-    #                                 'bike_q' + '_std',
-    #                                 'otp_q' + '_av',
-    #                                 'otp_q' + '_std'
-                                      ],
-                             index=comp_stat_index)
-
-    # comp_stat = pd.DataFrame(columns=['Compartment',
-    #                                   '#Vertices',
-    #                                   'SSD',
-    #                                   'otp_clust' + '_av',
-    #                                   'otp_clust' + '_std',
-    #                                   'bike_clust' + '_av',
-    #                                   'bike_clust' + '_std',
-    #                                   'bike_q' + '_av',
-    #                                   'bike_q' + '_std',
-    #                                   'otp_q' + '_av',
-    #                                   'otp_q' + '_std'],
-    #                          index=list(range(1, 20)))
-
-    colors = skat.plot_clust_init()
-    # skat.ax.set_title('Regionalization of Network Properties for Accessibility',
-    #                   fontsize=40)
-    skat.ax.set_title('Regionalization by Socioeconomic Variables',
-                      fontsize=40)
-    for i, comp in enumerate(comps):
-        stat_list = [str(i +1)]
-        stat_list.append(len(comp.nodes()))
-        stat_df = handler.neighborhood_se.loc[list(comp.nodes())]
-        comp_df = handler.model_.loc[list(comp.nodes())]
-        stat_list.append(round(skat.ssd(k=comp, x=comp_df), 5))
-        stat_list.append(round(stat_list[-1]/stat_list[-2], 5))
-        for var in reversed(census_variables):
-            stat_list.append(round(stat_df[var].mean(axis=0), 2))
-            stat_list.append(round(stat_df[var].std(axis=0), 2))
-
-        comp_stat.loc[i+1] = stat_list
-        for node in list(comp.nodes()):
-            skat.geo_df.at[node, 'clust'] = i + 1
-        comp_geo = skat.geo_df.loc[list(comp.nodes())]
-        # comp_geo.dissolve().plot(ax=skat.ax, color=colors[i+2])
-        comp_geo.plot(ax=skat.ax, color=colors[i +1])
-        plt.text(s=str(i+1),
-                 x=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[0],
-                 y=np.array(comp_geo.dissolve().representative_point()[0].coords.xy)[1],
-                 horizontalalignment='center',
-                 fontsize=26,
-                 color='k')
-
-
-    # city_parts = geopandas.read_file(os.path.join(dir_raw, 'stadsdelen all 2022-02-17 11.31.06.geojson'))
-    # city_parts.boundary.plot(ax=skat.ax)
-
-    skat.ax.set_axis_off()
-    plt.tight_layout()
-
-
-    # plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_se_part_comp'))
-    plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_se'))
-    # plt.savefig(fname=os.path.join(path_skater, 'se', 'SKATER_all'))
-    comp_all = ['overall']
-    comp_all.extend(round(comp_stat.mean(axis=0), 2))
-    comp_stat.loc['mean'] = comp_all
-    print(comp_stat.to_latex(index=False))
-    a =1
+    frame = pd.DataFrame(data,
+                         columns=handler.neighborhood_se.index,
+                         index=handler.neighborhood_se.index)
+    ij_mat = []
+    for i, n_i in enumerate(self.comps):
+        i_times = frame.loc[list(n_i.nodes())]
+        ij_list = []
+        for j, n_j in enumerate(self.comps):
+            if j == i:
+                ij_list.append(np.nan)
+            else:
+                ij_list.append(i_times.loc[:, list(n_j.nodes())].mean().mean())
+        ij_mat.append(ij_list)
+        a = 1
 
 
 def velocity():
@@ -167,8 +87,93 @@ def clust(calc=False):
         clust_map(data=geo_frame, column='bike_clust', mode='Bike')
 
 
-# handler = DataHandling()
-# handler.matrices()
+def skater_clust():
+    skat_help = Skater_Helper(geo_frame=geo_df, variables=model)
+    skat_help.adjacency_graph()
+
+    skater_w = weights.Queen.from_networkx(graph=skat_help.adj_g)
+
+    spanning_forest_kwds = dict(dissimilarity=diss,
+                                affinity=None,
+                                reduction=np.nansum,
+                                center=np.nanmean
+                                )
+
+    skat_calc = skat_lib.Skater(gdf=geo_df,
+                                w=skater_w,
+                                attrs_name=model,
+                                n_clusters=no_compartments,
+                                floor=1,
+                                trace=False,
+                                islands="increase",
+                                spanning_forest_kwds=spanning_forest_kwds)
+
+    # I expect to see RuntimeWarnings in this block for mean of empty slice np.nanmean
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", category=RuntimeWarning)
+        skat_calc.solve()
+
+    skat_stats(skat_result=skat_calc)
+    skat_plot(data=skat_calc)
+
+
+def skat_stats(skat_result):
+    skat_stat_index = list(range(len(np.unique(skat_result.labels_))))
+    skat_stat_index.append('overall')
+    skat_stat = pd.DataFrame(columns=['Compartment',
+                                      '#Vertices',
+                                      'SSD',
+                                      'SSD/Vertice',
+                                      census_variables[0] + '_av',
+                                      census_variables[0] + '_std',
+                                      census_variables[1] + '_av',
+                                      census_variables[1] + '_std',
+                                      census_variables[2] + '_av',
+                                      census_variables[2] + '_std',
+                                      census_variables[3] + '_av',
+                                      census_variables[3] + '_std',
+                                      census_variables[4] + '_av',
+                                      census_variables[4] + '_std',
+                                      # 'otp_clust' + '_av',
+                                      # 'otp_clust' + '_std',
+                                      # 'bike_clust' + '_av',
+                                      # 'bike_clust' + '_std',
+                                      # 'bike_q' + '_av',
+                                      # 'bike_q' + '_std',
+                                      # 'otp_q' + '_av',
+                                      # 'otp_q' + '_std'
+                                      ],
+                             index=skat_stat_index)
+
+    geo_df['skater_new'] = skat_result.labels_
+    geo_df['number'] = 1
+    skat_stat['#Vertices'] = geo_df[['skater_new', 'number']].groupby(by='skater_new').count()
+
+    for comp_no in range(len(np.unique(skat_result.labels_))):
+        comp_data = geo_df[model][skat_result.labels_ == comp_no]
+        or_data = handler.neighborhood_se[census_variables].reset_index(drop=True)[skat_result.labels_ == comp_no]
+        skat_stat.at[comp_no, 'Compartment'] = comp_no + 1
+        spanning = skat_lib.SpanningForest(**skat_result.spanning_forest_kwds)
+        skat_stat.at[comp_no, 'SSD'] = spanning.score(data=comp_data, labels=np.zeros(len(comp_data)))
+        skat_stat.at[comp_no, 'SSD/Vertice'] = round(skat_stat['SSD'][comp_no] / skat_stat['#Vertices'][comp_no], 5)
+        for c_var in reversed(census_variables):
+            skat_stat.at[comp_no, c_var + '_av'] = round(or_data[c_var].mean(), 2)
+            skat_stat.at[comp_no, c_var + '_std'] = round(or_data[c_var].std(), 2)
+
+    skat_stat.loc['overall'] = round(skat_stat.mean(axis=0), 2)
+    print(skat_stat.to_latex(index=False))
+
+
+def diss(X, Y=None):
+    if Y is None:
+        return spatial.distance.squareform(spatial.distance.pdist(X))
+    else:
+        return (X - Y) ** 2
+
+
+handler = DataHandling(new=True)
+handler.matrices()
+
 # velocity()
 # straightness_centrality()
 # clust(calc=True)
@@ -178,8 +183,6 @@ def clust(calc=False):
 #
 # clust()
 
-handler = DataHandling(new=True)
-handler.matrices()
 
 # handler.bike[handler.bike > 2400.0] = np.nan
 # handler.otp[handler.otp > 2400.0] = np.nan
@@ -192,11 +195,13 @@ model = census_variables[3:]
 model.append('edu_score')
 handler.stat_prep(model_variables=model)
 
-# plot_skater(model_variables)
-# plot_skater(variables=skat_transp())
-plot_skater()
 
+#comps_se = pickle.load(open(os.path.join(path_experiments, 'comps_se.p'), "rb"))
+no_compartments = 25
+geo_df = geopandas.GeoDataFrame(data=handler.model_,
+                                crs=crs_proj,
+                                geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
 
-# clust()
+geo_df.reset_index(inplace=True, drop=True)
 
-
+skater_clust()
