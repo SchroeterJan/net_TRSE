@@ -1,4 +1,4 @@
-from exp_resources import *
+from resources.exp_resources import *
 
 
 def se_year():

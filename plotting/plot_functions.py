@@ -1,10 +1,7 @@
-from prep_resources import *
+from resources.prep_resources import *
 
-import matplotlib
 from matplotlib import pyplot as plt
-import mapclassify
 import seaborn as sns
-import networkx as nx
 
 
 def geo_plot(frame, column=None, axis=None, legend=None):
@@ -47,6 +44,8 @@ def meanline(data, variable=None, x=1):
 
 
 # plot a histogram comparing columns of a data frame
+
+
 def comp_hist(frame, colors, binw):
     for i, col in enumerate(frame.columns):
         sns.histplot(data=frame, x=col, binwidth=binw, color=colors[i], label=col, alpha=0.5)
@@ -59,14 +58,3 @@ def multi_plot(shape, suptitle='', ytext='', xtext=''):
     fig.text(0.5, 0.04, xtext, ha='center', va='center')
     fig.text(0.03, 0.5, ytext, ha='center', va='center', rotation='vertical')
     return fig, axes
-
-
-def hilo(a, b, c):
-    if c < b: b, c = c, b
-    if b < a: a, b = b, a
-    if c < b: b, c = c, b
-    return a + c
-
-def complement(r, g, b):
-    k = hilo(r, g, b)
-    return tuple(k - u for u in (r, g, b))

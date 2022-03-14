@@ -4,10 +4,9 @@ import geopandas
 import numpy as np
 import pandas as pd
 import shapely.wkt
-from shapely.geometry import Point, LineString
+from shapely.geometry import Point
 
-
-from config import *
+from resources.config import *
 
 
 def build_matrix(length: int, data_list: list):

@@ -1,4 +1,4 @@
-from prep_resources import *
+from resources.prep_resources import *
 
 
 def areas():

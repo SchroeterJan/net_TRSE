@@ -2,6 +2,7 @@ from plotting.plot_functions import *
 import matplotlib.image as mgimg
 from matplotlib import animation
 import matplotlib.colors as mcolors
+from adjustText import adjust_text
 
 plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
@@ -145,7 +146,7 @@ def mst_plot(data):
     plt.close(fig)
 
 
-def skat_plot(data):
+def skat_plot(data, title):
     data.gdf['skater_new'] = data.labels_
 
     colors1 = plt.cm.tab20b(np.linspace(0., 1, 128))
@@ -155,18 +156,17 @@ def skat_plot(data):
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
     ax = data.gdf.plot(column='skater_new', categorical=True, figsize=(12, 8), edgecolor='w', cmap=mymap)
-    ax.set_title('Regionalization by Socioeconomic Variables', fontsize=22)
+    ax.set_title(title, fontsize=20)
     ax.set_axis_off()
+    texts = [plt.text(s=str(label + 1),
+                      x=np.array(data.gdf[data.labels_ == label].dissolve().representative_point()[0].coords.xy)[0],
+                      y=np.array(data.gdf[data.labels_ == label].dissolve().representative_point()[0].coords.xy)[1],
+                      horizontalalignment='center',
+                      color='k') for label in range(len(np.unique(data.labels_)))]
 
-    for l in range(len(np.unique(data.labels_))):
-        plt.text(s=str(l + 1),
-                 x=np.array(data.gdf[data.labels_ == l].dissolve().representative_point()[0].coords.xy)[0],
-                 y=np.array(data.gdf[data.labels_ == l].dissolve().representative_point()[0].coords.xy)[1],
-                 horizontalalignment='center',
-                 color='k')
-
+    adjust_text(texts)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_maps, 'skat_clust'))
+    plt.savefig(fname=os.path.join(path_maps, title))
     plt.close()
 
 
