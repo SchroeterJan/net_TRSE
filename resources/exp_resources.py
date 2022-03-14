@@ -63,15 +63,17 @@ class DataHandling:
         scores = []
         for row in edu_:
             score = 0
-            if np.nansum(row) == 100.0:
+            missing = np.isnan(row).sum()
+            if missing == 0:
                 score = row[0]*1 + row[1] * 2 + row[2] * 3
+            elif missing == 3:
+                score = np.nan
             else:
                 for i, val in enumerate(row):
                     if np.isnan(val):
-                        continue
+                        score += (100.0 - np.nansum(row))/missing * (i+1)
                     else:
                         score += val * (i+1)
-                score += 100.0 - np.nansum(row)
             scores.append(score)
         self.neighborhood_se['edu_score'] = scores
 
@@ -80,7 +82,7 @@ class DataHandling:
         #     self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(),
         #                                                 m=3.0)
 
-        x = self.neighborhood_se[model_variables].values
+        x = self.neighborhood_se[model_variables].values.reshape(-len(model_variables), len(model_variables))
         min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
         x_scaled = min_max_scaler.fit_transform(x)
         self.model_ = pd.DataFrame(data=x_scaled,
@@ -136,21 +138,17 @@ class DataHandling:
                                              weight=value)
 
 
-class Skater_Helper:
+class Custom_Adjacency:
 
-    def __init__(self, geo_frame, variables):
+    def __init__(self, geo_frame):
         print("Initializing " + self.__class__.__name__)
         # areas into geopandas DataFrame
         self.geo_df = geo_frame
-        # self.geo_df['lon'] = self.geo_df['centroid'].apply(lambda p: p.x)
-        # self.geo_df['lat'] = self.geo_df['centroid'].apply(lambda p: p.y)
 
         self.pos = {}
         self.adj_g = []
         self.geo_pos()
-
-        # create DataFrame containing relevant socio-economic variables for the model
-        self.model_df = geo_frame[variables]
+        self.adjacency_graph()
 
     def geo_pos(self):
         # get positions of nodes to make the graph spatial
@@ -211,7 +209,7 @@ class Skater_Helper:
         for i, area in enumerate(np.array(self.geo_df.index)):
             area_dict[i] = area
         # relabel nodes to area identifier
-        # self.adj_g = nx.relabel.relabel_nodes(G=self.adj_g, mapping=area_dict)
+        self.adj_g = nx.relabel.relabel_nodes(G=self.adj_g, mapping=area_dict)
         self.remove_islands()
 
 
