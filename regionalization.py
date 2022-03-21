@@ -2,12 +2,10 @@ from resources.exp_resources import *
 
 from libpysal import weights
 from spopt.region import skater as skat_lib
-from scipy import spatial
 import warnings
 
 
-
-def skater_clust(figtitle):
+def skater_clust(figtitle, store):
     cust_adj = Custom_Adjacency(geo_frame=geo_df)
     skater_w = weights.Queen.from_networkx(graph=cust_adj.adj_g)
 
@@ -27,12 +25,17 @@ def skater_clust(figtitle):
                                 spanning_forest_kwds=spanning_forest_kwds)
 
     # I expect to see RuntimeWarnings in this block for mean of empty slice np.nanmean
+    print('Run Regionalization')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         skat_calc.solve()
 
+    if store:
+        np.save(file=os.path.join(path_experiments, 'reg_result'), arr=skat_calc.labels_)
+
     skat_stats(skat_result=skat_calc)
     skat_plot(data=skat_calc, title=figtitle)
+
 
 
 def skat_stats(skat_result):
@@ -75,7 +78,7 @@ model = list(census_variables)
 model.append('edu_score')
 model = model[3:]
 
-handler.stat_prep(model_variables=model)
+handler.stat_prep(vars=model)
 
 no_compartments = 25
 geo_df = geopandas.GeoDataFrame(data=handler.model_,
@@ -86,4 +89,4 @@ handler.neighborhood_se = handler.neighborhood_se[~pd.isnull(geo_df[model]).all(
 geo_df.reset_index(inplace=True, drop=True)
 geo_df = geo_df[~pd.isnull(geo_df[model]).all(axis=1)]
 
-skater_clust(figtitle='Regionalization by Socioeconomic Variables')
+skater_clust(figtitle='Regionalization by Socioeconomic Variables', store=True)

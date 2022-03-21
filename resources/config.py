@@ -2,7 +2,11 @@ import os
 
 import yaml
 
-with open('../config_file.yml') as file:
+# Find repo direction
+path_repo = os.path.abspath(os.path.dirname(__file__))
+path_repo = os.path.abspath(os.path.join(path_repo, os.pardir))
+
+with open(os.path.join(path_repo, 'config_file.yml')) as file:
     # The FullLoader parameter handles the conversion from YAML
     # scalar values to Python the dictionary format
     vars = yaml.load(file, Loader=yaml.FullLoader)
@@ -48,11 +52,10 @@ range_factor = vars['range_factor']
 short_trip = vars['short_trip']
 
 
-# Find repo direction
-path_repo = os.getcwd()
+
 
 # path for generated data
-path_generated = '../Generated_data'
+path_generated = 'Generated_data'
 file_neighborhood_se = 'neighborhood_se.csv'
 file_flows = 'neighborhood_flows.csv'
 file_biketimes_raw = 'GH_bike.csv'

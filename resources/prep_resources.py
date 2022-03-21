@@ -264,5 +264,5 @@ class ODPrep:
         geo_df = geopandas.GeoDataFrame(crs=crs_proj,
                                         geometry=geopandas.GeoSeries.from_wkt(self.neighborhood_se.geometry))
         # iterate over all centroid locations and use geopandas distance function to calculate the distance to all other centroid locations
-        distances = np.array([geo_df.centroid.distance(centroid) for centroid in geo_df.centroid])
+        distances = np.array([geo_df.centroid.distance(c) for c in geo_df.centroid])
         return distances

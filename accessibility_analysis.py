@@ -24,11 +24,9 @@ def velocity():
 
 
 def straightness_centrality():
-    #handler.mix_otp_bike()
+    print('calculate velocities')
     handler.get_q_ij()
-
-    # handler.bike_qij[handler.bike > 2400.0] = 0.0
-    # handler.otp_qij[handler.otp > 3600.0] = 0.0
+    print('calculate modal efficiency')
     handler.get_q()
 
     hist_straight(data=handler.neighborhood_se, modes=['bike_q', 'otp_q'])
@@ -43,12 +41,13 @@ def clust_coeff(calc=False):
     if calc:
         handler.initiate_graph()
         handler.add_edges(mode='pt')
-
+        print('calculate clustering coefficients for public transport')
         cluster_dict = nx.clustering(handler.graph, weight='weight')
         handler.neighborhood_se['otp_clust'] = np.array(list(cluster_dict.values()))
 
         handler.initiate_graph()
         handler.add_edges(mode='bike')
+        print('calculate clustering coefficients for bike')
         cluster_dict = nx.clustering(handler.graph, weight='weight')
         handler.neighborhood_se['bike_clust'] = np.array(list(cluster_dict.values()))
     else:
@@ -64,14 +63,14 @@ handler = DataHandling()
 handler.matrices()
 
 # velocity()
-# straightness_centrality()
-# clust(calc=True)
-# handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+straightness_centrality()
+clust_coeff(calc=True)
+handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
 # handler = DataHandling(new=True)
 # handler.matrices()
 #
 # clust()
-
+a = 1
 
 # handler.bike[handler.bike > 2400.0] = np.nan
 # handler.otp[handler.otp > 2400.0] = np.nan

@@ -50,14 +50,6 @@ def flows():
     area_flow_matrix.to_csv(path_or_buf=path_flows, sep=';')
 
 
-
-
-
-
-
-    a = 1
-
-
 areas()
 flows()
 od_matrices()

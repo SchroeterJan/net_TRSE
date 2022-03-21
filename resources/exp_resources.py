@@ -2,6 +2,8 @@ from plotting.plots import *
 
 import math
 from sklearn import preprocessing
+import networkx as nx
+from scipy import spatial
 
 travel_times = ['Bike', 'Public Transport']
 
@@ -52,12 +54,6 @@ class DataHandling:
         self.euclid = self.reduce_matrix(self.euclid)
         #self.pt = self.reduce_matrix(self.pt)
 
-    def mix_otp_bike(self):
-        short = np.asarray(self.euclid < short_trip).nonzero()
-        self.mixed = self.otp
-        for i, j in enumerate(short[0]):
-            self.mixed[j, short[1][i]] = self.bike[j, short[1][i]]
-
     def edu_score(self):
         edu_ = self.neighborhood_se[census_variables[:3]].values
         scores = []
@@ -77,17 +73,17 @@ class DataHandling:
             scores.append(score)
         self.neighborhood_se['edu_score'] = scores
 
-    def stat_prep(self, model_variables):
+    def stat_prep(self, vars):
         # for var in model_variables:
         #     self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(),
         #                                                 m=3.0)
 
-        x = self.neighborhood_se[model_variables].values.reshape(-len(model_variables), len(model_variables))
+        x = self.neighborhood_se[vars].values.reshape(-len(vars), len(vars))
         min_max_scaler = preprocessing.MinMaxScaler(feature_range=(0, 1))
         x_scaled = min_max_scaler.fit_transform(x)
         self.model_ = pd.DataFrame(data=x_scaled,
-                                         columns=model_variables,
-                                         index=self.neighborhood_se.index)
+                                   columns=vars,
+                                   index=self.neighborhood_se.index)
 
     def reduce_matrix(self, frame):
         matrix = np.triu(m=frame.to_numpy(), k=0)
@@ -98,24 +94,18 @@ class DataHandling:
         # reciprocal of the route factor - multiplied to result in km/h
         self.otp_qij = self.euclid / self.otp * 3.6
         self.bike_qij = self.euclid / self.bike * 3.6
-        #self.pt_qij = self.euclid / self.pt * 3.6
-        #self.mixed_q = self.euclid / self.mixed
 
     def get_q(self):
         self.neighborhood_se['otp_q'] = (np.nan_to_num(self.otp_qij).sum(axis=1) +
                                          np.nan_to_num(self.otp_qij).sum(axis=0)) / (len(self.otp_qij[0]) - 1)
         self.neighborhood_se['bike_q'] = (np.nan_to_num(self.bike_qij).sum(axis=1) +
                                           np.nan_to_num(self.bike_qij).sum(axis=0)) / (len(self.bike_qij[0]) - 1)
-        #self.neighborhood_se['mixed_q'] = (np.nan_to_num(self.mixed_q).sum(axis=1) +
-        #                                 np.nan_to_num(self.mixed_q).sum(axis=0)) / (len(self.mixed_q[0]) - 1)
-
 
     def initiate_graph(self):
         #neighborhoods = self.neighborhood_se.index
         self.graph = nx.Graph()
         for neighborhood in self.neighborhood_se[column_names['geo_id_col']]:
             self.graph.add_node(neighborhood)
-
 
     def choose_mode(self, mode):
         if mode == 'pt':
@@ -124,7 +114,6 @@ class DataHandling:
             return self.bike
         else:
             print('PICKED MODE IS NOT PREDEFINED - PLEASE SPECIFY \'pt\' or \'bike\'')
-
 
     def add_edges(self, mode):
         matrix = self.choose_mode(mode=mode)
@@ -148,6 +137,7 @@ class Custom_Adjacency:
         self.pos = {}
         self.adj_g = []
         self.geo_pos()
+        print('Get custom adjacency graph')
         self.adjacency_graph()
 
     def geo_pos(self):

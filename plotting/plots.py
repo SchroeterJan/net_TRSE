@@ -164,7 +164,7 @@ def skat_plot(data, title):
                       horizontalalignment='center',
                       color='k') for label in range(len(np.unique(data.labels_)))]
 
-    adjust_text(texts)
+    # adjust_text(texts)
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_maps, title))
     plt.close()
@@ -299,3 +299,28 @@ def clust_map(data, column, mode):
     plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode))
     plt.close(f)
 
+
+
+def trse_box(data, labels, feature, acc):
+    # the figure and axes
+    fig, ax = plt.subplots()
+
+    for label in range(len(np.unique(labels))):
+        if label == 6 or label == 15 or label == 16 or label == 18 or label == 24:
+            continue
+        x = np.array(data[labels == label][feature])
+        y = np.array(data[labels == label][acc])
+
+        # some fake data
+        # x = np.random.rand(1000) ** 2
+        # y = np.sqrt(np.random.rand(1000))
+        # x = np.random.rand(1000)
+        # y = np.random.rand(1000)
+
+        # plotting the original data
+        # ax1.scatter(x, y, c='r', s=1)
+
+        # doing the box plot
+        boxplot_2d(x, y, ax=ax, whis=1)
+
+    a = 10
