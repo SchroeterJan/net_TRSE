@@ -6,7 +6,6 @@ from spopt.region import skater as skat_lib
 import warnings
 
 
-
 # class cust_tree:
 #
 #
@@ -108,8 +107,6 @@ import warnings
 #         a = 1
 
 
-
-
 def skater_clust(figtitle, c, adj, store=False):
 
     skater_w = weights.Queen.from_networkx(graph=adj)
@@ -119,11 +116,8 @@ def skater_clust(figtitle, c, adj, store=False):
     # for i, j in list(g.edges):
     #     g[i][j]['weight'] = True
     # tree_w = weights.Queen.from_networkx(graph=g)
-    #
     # mst_plot(g=g ,pos=cust_adj.pos, geo_df=geo_df)
-
     # cust_tree(c=np.triu(nx.to_numpy_array(G=cust_adj.adj_g).astype(bool)))
-
 
 
     spanning_forest_kwds = dict(dissimilarity=diss,
@@ -141,7 +135,7 @@ def skater_clust(figtitle, c, adj, store=False):
                                 islands="increase",
                                 spanning_forest_kwds=spanning_forest_kwds)
 
-    # I expect to see RuntimeWarnings in this block for mean of empty slice np.nanmean
+    # RuntimeWarnings are expected in this block for mean of empty slice np.nanmean
     print('Run Regionalization')
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -150,49 +144,16 @@ def skater_clust(figtitle, c, adj, store=False):
     if store:
         np.save(file=os.path.join(path_experiments, 'reg_result'), arr=skat_calc.labels_)
 
-    stats = skat_stats(skat_result=skat_calc)
+    stats = skat_stats(geo_df=geo_df,
+                       model=model,
+                       skat_labels=skat_calc.labels_,
+                       or_data=handler.neighborhood_se[census_variables],
+                       spanning=skat_lib.SpanningForest(**skat_calc.spanning_forest_kwds),
+                       print_latex=True)
     skat_plot(geo_df=skat_calc.gdf, labels=skat_calc.labels_, title=figtitle)
     plt.savefig(fname=os.path.join(path_maps, figtitle))
     plt.close()
     # return stats['#Vertices'].std(), stats['SSD']['overall'], skat_calc.labels_
-
-
-def skat_stats(skat_result):
-    skat_stat_index = list(range(len(np.unique(skat_result.labels_))))
-    skat_stat_index.append('overall')
-    skat_stat = pd.DataFrame(index=skat_stat_index,
-                             columns=['Compartment', '#Vertices'])
-
-    geo_df['skater_new'] = skat_result.labels_
-    geo_df['number'] = 1
-    skat_stat['#Vertices'] = geo_df[['skater_new', 'number']].groupby(by='skater_new').count()
-
-    for comp_no in range(len(np.unique(skat_result.labels_))):
-        comp_data = geo_df[model][skat_result.labels_ == comp_no]
-        or_data = handler.neighborhood_se[census_variables].reset_index(drop=True)[skat_result.labels_ == comp_no]
-        skat_stat.at[comp_no, 'Compartment'] = comp_no + 1
-        spanning = skat_lib.SpanningForest(**skat_result.spanning_forest_kwds)
-        skat_stat.at[comp_no, 'SSD'] = spanning.score(data=comp_data, labels=np.zeros(len(comp_data)))
-        skat_stat.at[comp_no, 'SSD/Vertice'] = round(skat_stat['SSD'][comp_no] / skat_stat['#Vertices'][comp_no], 3)
-        for c_var in reversed(census_variables):
-            skat_stat.at[comp_no, c_var + '_av'] = round(or_data[c_var].mean(), 2)
-            skat_stat.at[comp_no, c_var + '_std'] = round(or_data[c_var].std(), 2)
-
-
-    skat_stat.loc['overall'] = round(skat_stat.mean(axis=0), 2)
-    skat_stat = skat_stat.astype({'#Vertices': 'int32',
-                                  'Compartment': 'int32',
-                                  })
-    skat_stat = skat_stat.round({'SSD': 3})
-    print(skat_stat.to_latex(index=False))
-    return skat_stat
-
-
-def diss(X, Y=None):
-    if Y is None:
-        return spatial.distance.squareform(spatial.distance.pdist(X))
-    else:
-        return (X - Y) ** 2
 
 
 def clust_no():
@@ -267,12 +228,10 @@ handler = DataHandling(new=True)
 handler.matrices()
 
 
-
 handler.edu_score()
 model = list(census_variables)
 model.append('edu_score')
 model = model[3:]
-
 
 
 handler.stat_prep(vars=model)
@@ -284,7 +243,6 @@ handler.stat_prep(vars=model)
 geo_df = geopandas.GeoDataFrame(data=handler.model_,
                                 crs=crs_proj,
                                 geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-
 geo_df.reset_index(inplace=True, drop=True)
 
 
@@ -292,10 +250,8 @@ geo_df.reset_index(inplace=True, drop=True)
 
 no_compartments = 37
 
-
 w_queen = weights.Queen.from_dataframe(df=geo_df, geom_col='geometry')
 cust_adj = Adj_Islands(geo_frame=geo_df, g_init=w_queen.to_networkx())
-
 
 # cust_adj = Custom_Adjacency(geo_frame=geo_df)
 skater_clust(figtitle='Regionalization by Socioeconomic Variables', c=no_compartments, adj=cust_adj.adj_g, store=True)

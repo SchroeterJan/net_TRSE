@@ -24,6 +24,45 @@ def reject_outliers(data, m):
     return data
 
 
+def skat_stats(geo_df, model, skat_labels, or_data, spanning=None, print_latex=False):
+    skat_stat_index = list(range(len(np.unique(skat_labels))))
+    skat_stat_index.append('overall')
+    skat_stat = pd.DataFrame(index=skat_stat_index,
+                             columns=['Compartment', '#Vertices'])
+
+    geo_df['skater_new'] = skat_labels
+    geo_df['number'] = 1
+    skat_stat['#Vertices'] = geo_df[['skater_new', 'number']].groupby(by='skater_new').count()
+
+    for comp_no in range(len(np.unique(skat_labels))):
+        comp_data = geo_df[model][skat_labels == comp_no]
+        comp_data_or = or_data.reset_index(drop=True)[skat_labels == comp_no]
+        skat_stat.at[comp_no, 'Compartment'] = comp_no + 1
+        if spanning is not None:
+            skat_stat.at[comp_no, 'SSD'] = spanning.score(data=comp_data, labels=np.zeros(len(comp_data)))
+            skat_stat.at[comp_no, 'SSD/Vertice'] = round(skat_stat['SSD'][comp_no] / skat_stat['#Vertices'][comp_no], 3)
+        for c_var in reversed(census_variables):
+            skat_stat.at[comp_no, c_var + '_av'] = round(comp_data_or[c_var].mean(), 2)
+            skat_stat.at[comp_no, c_var + '_std'] = round(comp_data_or[c_var].std(), 2)
+
+
+    skat_stat.loc['overall'] = round(skat_stat.mean(axis=0), 2)
+    skat_stat = skat_stat.astype({'#Vertices': 'int32',
+                                  'Compartment': 'int32',
+                                  })
+    skat_stat = skat_stat.round({'SSD': 3})
+    if print_latex:
+        print(skat_stat.to_latex(index=False))
+    return skat_stat
+
+
+def diss(X, Y=None):
+    if Y is None:
+        return spatial.distance.squareform(spatial.distance.pdist(X))
+    else:
+        return (X - Y) ** 2
+
+
 class DataHandling:
 
     def __init__(self, new=False):
