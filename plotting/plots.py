@@ -2,11 +2,12 @@ from plotting.plot_functions import *
 import matplotlib.image as mgimg
 from matplotlib import animation
 import matplotlib.colors as mcolors
-from adjustText import adjust_text
+import matplotlib.transforms as transforms
 
 plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
 sns.set_theme(style="ticks")
+
 
 
 def hist_modes(handler, travel_times):
@@ -97,21 +98,41 @@ def hist_straight(data, modes):
     plt.close(f)
 
 
-def straight_map(data, column, mode):
+def me_map(data, column, mode):
 
     f, ax = plt.subplots(figsize=(8, 8))
     sns.despine(f)
 
+
     geo_plot(frame=data,
              column=column,
              axis=ax,
-             legend='Adapted Straightness Centrality')
+             legend='Summed Modal Efficiency')
 
     ax.set_title('Spatial distribution of ' + r'$St$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_maps, 'q_map_' + mode))
     plt.close(f)
+
+
+def skat_acc_map(total_geo, mode, dissolved_geo):
+    f, ax = plt.subplots(figsize=(8, 8))
+    sns.despine(f)
+
+    geo_plot(frame=total_geo,
+             column=mode,
+             axis=ax,
+             legend='Summed Modal Efficiency')
+
+    dissolved_geo.boundary.plot(ax=ax, edgecolor='black', linewidth=3)
+
+    ax.set_title('Spatial distribution of ' + r'$St$ for ' + mode, fontdict=dict(fontsize=18))
+    ax.margins(x=0)
+    plt.tight_layout()
+    # plt.savefig(fname=os.path.join(path_maps, 'q_map_' + mode))
+    # plt.close(f)
+
 
 
 def hist_qij(handler, travel_times):
@@ -136,18 +157,18 @@ def hist_qij(handler, travel_times):
     plt.close(f)
 
 
-def mst_plot(data):
+def mst_plot(g, pos, geo_df):
     fig, ax = plt.subplots(figsize=(20, 15))
-    ax = data.geo_df.plot()
+    ax = geo_df.plot()
     ax.set_title('MST for SKATER', fontsize=40)
-    nx.drawing.nx_pylab.draw_networkx_edges(G=data.mst(), pos=data.pos, ax=ax, width=2.0)
+    nx.drawing.nx_pylab.draw_networkx_edges(G=g, pos=pos, ax=ax, width=2.0)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_maps, 'mst'))
+    # plt.savefig(fname=os.path.join(path_maps, 'mst'))
     plt.close(fig)
 
 
-def skat_plot(data, title):
-    data.gdf['skater_new'] = data.labels_
+def skat_plot(geo_df, labels, title, labels_or=None):
+    geo_df['skater_new'] = labels
 
     colors1 = plt.cm.tab20b(np.linspace(0., 1, 128))
     colors2 = plt.cm.tab20c(np.linspace(0, 1, 128))
@@ -155,19 +176,19 @@ def skat_plot(data, title):
     colors = np.vstack((colors1, colors2))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
-    ax = data.gdf.plot(column='skater_new', categorical=True, figsize=(12, 8), edgecolor='w', cmap=mymap)
+    ax = geo_df.plot(column='skater_new', categorical=True, figsize=(12, 8), edgecolor='w', cmap=mymap)
     ax.set_title(title, fontsize=20)
     ax.set_axis_off()
-    texts = [plt.text(s=str(label + 1),
-                      x=np.array(data.gdf[data.labels_ == label].dissolve().representative_point()[0].coords.xy)[0],
-                      y=np.array(data.gdf[data.labels_ == label].dissolve().representative_point()[0].coords.xy)[1],
-                      horizontalalignment='center',
-                      color='k') for label in range(len(np.unique(data.labels_)))]
+    if labels_or is None:
+        labels_or = labels
+
+    plot_texts = [plt.text(s=str(label + 1),
+                           x=np.array(geo_df[labels_or == label].dissolve().representative_point()[0].coords.xy)[0],
+                           y=np.array(geo_df[labels_or == label].dissolve().representative_point()[0].coords.xy)[1],
+                           color='k') for label in range(len(np.unique(labels_or)))]
 
     # adjust_text(texts)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_maps, title))
-    plt.close()
 
 
 def animate_skater(c):
@@ -213,7 +234,7 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
     #ymax = np.amax(y_)
     ### Get Plot
     if multi:
-        hb = multiax.hexbin(x=x, y=y, gridsize=50, cmap='cubehelix', mincnt=20,
+        hb = multiax.hexbin(x=x, y=y, gridsize=50, cmap='cubehelix', mincnt=2,
                              extent=[xmin, xmax, ymin, ymax])
     else:
         fig, axs = plt.subplots(ncols=1, sharey=True, figsize=(9, 6))
@@ -252,9 +273,9 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
             average_x = sum_x/sum_counts
             binx, biny = average_x , verts[y_hexagons[0]][1]
             if multi:
-                multiax.plot(binx, biny, 'r.', zorder=100, markersize=12)
+                multiax.plot(binx, biny, 'r.', zorder=100, markersize=6)
             else:
-                axs.plot(binx, biny, 'r.', zorder=100, markersize=12)
+                axs.plot(binx, biny, 'r.', zorder=100, markersize=6)
     if multi:
         return hb
     else:
@@ -284,14 +305,16 @@ def hist_clust(data, modes):
     plt.close(f)
 
 
-def clust_map(data, column, mode):
+def clust_map(data, column, mode, circles):
     f, ax = plt.subplots(figsize=(8, 8))
     sns.despine(f)
 
     geo_plot(frame=data,
              column=column,
              axis=ax,
-             legend='Weighted Clustering Coefficient')
+             legend='Weighted Clustering Coefficient',
+             circles=circles)
+
 
     ax.set_title('Spatial distribution of ' + r'$\widetilde{C}$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)

@@ -3,20 +3,72 @@ from resources.prep_resources import *
 from matplotlib import pyplot as plt
 from matplotlib.patches import Rectangle
 from matplotlib.lines import Line2D
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import seaborn as sns
+import cartopy.crs as ccrs
+import networkx as nx
 
 
-def geo_plot(frame, column=None, axis=None, legend=None):
-    if axis != None:
-        axis.set_axis_off()
-    frame.plot(ax=axis, column=column,
-               cmap='Set1',
-               scheme='equalinterval',
-               legend=True,
-               legend_kwds=dict(loc='lower left',
-                                fontsize='medium',
-                                title=legend,
-                                frameon=False))
+def geo_plot(frame,reverse=False, column=None, axis=None, legend=None, circles=False):
+
+    divider = make_axes_locatable(axis)
+    cax = divider.append_axes("bottom", size="3%", pad=0.1)
+    cax.tick_params(axis='both', which='major', labelsize=15)
+    cax.set_title(label=legend, fontdict=dict(fontsize=15))
+    if reverse:
+        frame.plot(ax=axis,
+                   column=column,
+                   cmap='magma_r',
+                   #cmap='Set1',
+                   #scheme='equalinterval',
+                   legend=True,
+                   cax=cax,
+                   legend_kwds=dict(
+                       orientation='horizontal',
+                       # label=legend,
+                       # fontsize='medium'
+                       # loc='lower left',
+                       # #fontsize='medium',
+                       # #title=legend,
+                       # #frameon=False
+                       ),
+                   linewidth=0,
+                   )
+    else:
+        frame.plot(ax=axis,
+                   column=column,
+                   cmap='magma',
+                   # cmap='Set1',
+                   # scheme='equalinterval',
+                   legend=True,
+                   cax=cax,
+                   legend_kwds=dict(
+                       orientation='horizontal',
+                       # label=legend,
+                       # fontsize='medium'
+                       # loc='lower left',
+                       # #fontsize='medium',
+                       # #title=legend,
+                       # #frameon=False
+                   )
+                   )
+    #plt.colorbar(axis, fraction=0.046, pad=0.04)
+    if circles:
+        map = frame.dissolve()
+        for dist in range(1, 5):
+            circle = map.centroid.buffer(distance=dist*2*1000).boundary
+            circle.plot(ax=axis, color='g', linewidth=2.0)
+            axis.text(x=circle.bounds['maxx'],
+                      y=circle.bounds['miny'] + (circle.bounds['maxy'] - circle.bounds['miny'])/2,
+                      s=(str(dist * 2) + 'km'),
+                      zorder=10*dist,
+                      color='g')
+
+    axis.set_axis_off()
+
+    
+    
+
 
 
 def meanline(data, variable=None, x=1):
