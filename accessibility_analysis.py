@@ -1,10 +1,11 @@
 from resources.exp_resources import *
 
 
-def velocity():
+def modal_efficiency():
     handler.get_q_ij()
     handler.bike_qij = reject_outliers(flatten(handler.bike_qij), m=12.)
     handler.otp_qij = flatten(handler.otp_qij)
+
 
     heatscatter(x=flatten(handler.bike),
                 y=flatten(handler.euclid),
@@ -23,7 +24,7 @@ def velocity():
     hist_qij(handler=handler, travel_times=travel_times)
 
 
-def straightness_centrality():
+def sme():
     print('calculate velocities')
     handler.get_q_ij()
     print('calculate modal efficiency')
@@ -33,11 +34,11 @@ def straightness_centrality():
 
     geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
                                        geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    straight_map(data=geo_frame, column='otp_q', mode='Public Transport')
-    straight_map(data=geo_frame, column='bike_q', mode='Bike')
+    me_map(data=geo_frame, column='otp_q', mode='Public Transport')
+    me_map(data=geo_frame, column='bike_q', mode='Bike')
 
 
-def clust_coeff(calc=False):
+def clust_coeff(calc=False, bike_discussion=False):
     if calc:
         handler.initiate_graph()
         handler.add_edges(mode='pt')
@@ -55,21 +56,31 @@ def clust_coeff(calc=False):
 
         geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
                                            geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-        clust_map(data=geo_frame, column='otp_clust', mode='Public Transport')
-        clust_map(data=geo_frame, column='bike_clust', mode='Bike')
+        #clust_map(data=geo_frame, column='otp_clust', mode='Public Transport')
+        clust_map(data=geo_frame, column='bike_clust', mode='Bike', circles=bike_discussion)
 
 
 handler = DataHandling()
 handler.matrices()
 
+euclid_bike = handler.euclid.copy()
+euclid_bike[handler.bike > 2400.0] = np.nan
+euclid_otp = handler.euclid.copy()
+euclid_otp[handler.otp > 2700.0] = np.nan
+
+
+handler.bike[handler.bike > 2400.0] = np.nan
+handler.otp[handler.otp > 2700.0] = np.nan
+
+
 # velocity()
-straightness_centrality()
-clust_coeff(calc=True)
-handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
-# handler = DataHandling(new=True)
-# handler.matrices()
+# straightness_centrality()
+# clust_coeff(calc=True)
+# handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+handler = DataHandling(new=True)
+handler.matrices()
 #
-# clust()
+clust_coeff(bike_discussion=True)
 a = 1
 
 # handler.bike[handler.bike > 2400.0] = np.nan
