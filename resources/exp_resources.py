@@ -4,8 +4,10 @@ import math
 from sklearn import preprocessing
 from scipy import spatial
 from sklearn import metrics
+from libpysal import weights
 
 travel_times = ['Bike', 'Public Transport']
+
 
 def flatten(x):
     x = x.flatten()
@@ -24,23 +26,29 @@ def reject_outliers(data, m):
     return data
 
 
-def skat_stats(geo_df, model, skat_labels, or_data, spanning=None, print_latex=False):
-    skat_stat_index = list(range(len(np.unique(skat_labels))))
-    skat_stat_index.append('overall')
-    skat_stat = pd.DataFrame(index=skat_stat_index,
+def skat_stats(geo_df, model, skat_labels, or_data, spanning=None, print_latex=False, index_col=None):
+    if index_col is None:
+        index_col = list(range(len(np.unique(skat_labels))))
+
+    skat_stat = pd.DataFrame(index=index_col,
                              columns=['Compartment', '#Vertices'])
 
     geo_df['skater_new'] = skat_labels
     geo_df['number'] = 1
     skat_stat['#Vertices'] = geo_df[['skater_new', 'number']].groupby(by='skater_new').count()
+    skat_stat['Compartment'] = np.array(index_col) + 1
 
-    for comp_no in range(len(np.unique(skat_labels))):
+    for comp_no in np.unique(skat_labels):
         comp_data = geo_df[model][skat_labels == comp_no]
         comp_data_or = or_data.reset_index(drop=True)[skat_labels == comp_no]
-        skat_stat.at[comp_no, 'Compartment'] = comp_no + 1
+
         if spanning is not None:
-            skat_stat.at[comp_no, 'SSD'] = spanning.score(data=comp_data, labels=np.zeros(len(comp_data)))
+            skat_stat.at[comp_no, 'SSD'] = round(spanning.score(data=comp_data, labels=np.zeros(len(comp_data))), 3)
             skat_stat.at[comp_no, 'SSD/Vertice'] = round(skat_stat['SSD'][comp_no] / skat_stat['#Vertices'][comp_no], 3)
+        else:
+            for var in model:
+                skat_stat.at[comp_no, var + '_av'] = round(comp_data[var].mean(), 2)
+                skat_stat.at[comp_no, var + '_std'] = round(comp_data[var].std(), 2)
         for c_var in reversed(census_variables):
             skat_stat.at[comp_no, c_var + '_av'] = round(comp_data_or[c_var].mean(), 2)
             skat_stat.at[comp_no, c_var + '_std'] = round(comp_data_or[c_var].std(), 2)
@@ -50,7 +58,7 @@ def skat_stats(geo_df, model, skat_labels, or_data, spanning=None, print_latex=F
     skat_stat = skat_stat.astype({'#Vertices': 'int32',
                                   'Compartment': 'int32',
                                   })
-    skat_stat = skat_stat.round({'SSD': 3})
+    # skat_stat = skat_stat.round({'SSD': 3})
     if print_latex:
         print(skat_stat.to_latex(index=False))
     return skat_stat
@@ -166,23 +174,25 @@ class DataHandling:
                                              weight=value)
 
 
+def geo_pos(geo_df):
+    pos = {}
+    # get positions of nodes to make the graph spatial
+    for count, elem in enumerate(np.array(geo_df.centroid)):
+        pos[geo_df.index[count]] = (elem.x, elem.y)
+    return pos
+
+
 class Adj_Islands:
 
     def __init__(self, geo_frame, g_init):
         print("Initializing " + self.__class__.__name__)
         # areas into geopandas DataFrame
         self.geo_df = geo_frame
-        self.pos = {}
         self.adj_g = g_init
-        self.geo_pos()
+        self.pos = geo_pos(geo_df=self.geo_df)
         print('Get custom adjacency graph')
         self.fix_polygons()
         self.remove_islands()
-
-    def geo_pos(self):
-        # get positions of nodes to make the graph spatial
-        for count, elem in enumerate(np.array(self.geo_df.centroid)):
-            self.pos[self.geo_df.index[count]] = (elem.x, elem.y)
 
     def remove_islands(self):
         # connect spatially disconnected subgraphs
