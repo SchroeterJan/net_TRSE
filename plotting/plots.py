@@ -79,7 +79,7 @@ def se_maps(handler):
     plt.savefig(fname=os.path.join(path_maps, 'se_variables_maps'))
 
 
-def hist_straight(data, modes):
+def hist_SME(data, modes):
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
     data = data[modes]
@@ -89,8 +89,8 @@ def hist_straight(data, modes):
 
     comp_hist(frame=data, colors=colors, binw=0.2)
 
-    ax.set_title('Histogram of ' + r'$St$')
-    ax.set_xlabel('Adapted Straightness Centrality')
+    ax.set_title('Histogram of ' + r'$SME$')
+    ax.set_xlabel('Summed Modal Efficiency')
     ax.margins(x=0)
     plt.tight_layout()
     plt.legend()
@@ -109,7 +109,7 @@ def me_map(data, column, mode):
              axis=ax,
              legend='Summed Modal Efficiency')
 
-    ax.set_title('Spatial distribution of ' + r'$St$ for ' + mode, fontdict=dict(fontsize=18))
+    ax.set_title('Spatial distribution of ' + r'$SME$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_maps, 'q_map_' + mode))
@@ -127,7 +127,7 @@ def skat_acc_map(total_geo, mode, dissolved_geo):
 
     dissolved_geo.boundary.plot(ax=ax, edgecolor='black', linewidth=3)
 
-    ax.set_title('Spatial distribution of ' + r'$St$ for ' + mode, fontdict=dict(fontsize=18))
+    ax.set_title('Spatial distribution of ' + r'$SME$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)
     plt.tight_layout()
     # plt.savefig(fname=os.path.join(path_maps, 'q_map_' + mode))
