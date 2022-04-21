@@ -12,13 +12,13 @@ optional input:
 
 - passenger flows for public transport
 
-*scripts for scraping travel-times from open source routing engines is provided, please read Routing section
+*scripts for scraping travel-times from open source routing engines are provided, please read Routing section
 
 
 ## Getting Started
 
-The setup is explained along an example case using Amsterdam as its subject.
-Along this explanation, the user_config.py must be populated accordingly.
+The setup is explained on the city of Amsterdam as an example case.
+Please fill the config_example.yml accordingly.
 
 Steps:
 

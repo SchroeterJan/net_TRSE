@@ -3,19 +3,19 @@ from resources.exp_resources import *
 
 def modal_efficiency():
     handler.get_q_ij()
-    handler.bike_qij = reject_outliers(flatten(handler.bike_qij), m=12.)
-    handler.otp_qij = flatten(handler.otp_qij)
+    handler.bike_qij = reject_outliers(handler.bike_qij.flatten()[~np.isnan(handler.bike_qij.flatten())], m=12.)
+    handler.otp_qij = handler.otp_qij.flatten()[~np.isnan(handler.otp_qij.flatten())]
 
 
-    heatscatter(x=flatten(handler.bike),
-                y=flatten(handler.euclid),
+    heatscatter(x=handler.bike.flatten()[~np.isnan(handler.bike.flatten())],
+                y=handler.euclid.flatten()[~np.isnan(handler.euclid.flatten())],
                 xlabel='Travel time by Bike in ' + r'$s$',
                 ylabel='Euclidean distance in ' + r'$m$',
                 title='Bike',
                 av=True)
 
-    heatscatter(x=flatten(handler.otp),
-                y=flatten(handler.euclid),
+    heatscatter(x=handler.otp.flatten()[~np.isnan(handler.otp.flatten())],
+                y=handler.euclid.flatten()[~np.isnan(handler.euclid.flatten())],
                 xlabel='Travel time by Public Transport in ' + r'$s$',
                 ylabel='Euclidean distance in ' + r'$m$',
                 title='Public Transport',
@@ -30,12 +30,12 @@ def sme():
     print('calculate modal efficiency')
     handler.get_q()
 
-    hist_straight(data=handler.neighborhood_se, modes=['bike_q', 'otp_q'])
+    hist_me(data=handler.neighborhood_se, modes=['bike_q', 'otp_q'])
 
     geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
                                        geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    me_map(data=geo_frame, column='otp_q', mode='Public Transport')
-    me_map(data=geo_frame, column='bike_q', mode='Bike')
+    sme_map(data=geo_frame, column='otp_q', mode='Public Transport')
+    sme_map(data=geo_frame, column='bike_q', mode='Bike')
 
 
 def clust_coeff(calc=False, bike_discussion=False):
@@ -63,26 +63,15 @@ def clust_coeff(calc=False, bike_discussion=False):
 handler = DataHandling()
 handler.matrices()
 
-euclid_bike = handler.euclid.copy()
-euclid_bike[handler.bike > 2400.0] = np.nan
-euclid_otp = handler.euclid.copy()
-euclid_otp[handler.otp > 2700.0] = np.nan
-
+modal_efficiency()
 
 handler.bike[handler.bike > 2400.0] = np.nan
 handler.otp[handler.otp > 2700.0] = np.nan
 
-
-# velocity()
-# straightness_centrality()
-# clust_coeff(calc=True)
-# handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+sme()
+clust_coeff(calc=True)
+handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
 handler = DataHandling(new=True)
 handler.matrices()
-#
-clust_coeff(bike_discussion=True)
-a = 1
 
-# handler.bike[handler.bike > 2400.0] = np.nan
-# handler.otp[handler.otp > 2400.0] = np.nan
-# straightness_centrality()
+clust_coeff(bike_discussion=True)
