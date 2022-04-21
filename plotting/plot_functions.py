@@ -71,15 +71,25 @@ def geo_plot(frame,reverse=False, column=None, axis=None, legend=None, circles=F
 
 
 
-def meanline(data, variable=None, x=1):
+def meanline(data, ax, variable=None, x=1):
+    min_ylim, max_ylim = ax.get_ylim()
     if isinstance(data, pd.DataFrame):
-        plt.axvline(np.nanmean(data[variable].to_numpy()), color='k', linestyle='dashed', linewidth=1)
+        ax.vlines(x=np.nanmean(data[variable].to_numpy()),
+                  ymin=min_ylim,
+                  ymax=max_ylim,
+                  color='k',
+                  linestyle='dashed',
+                  linewidth=1)
     elif isinstance(data, np.ndarray):
-        plt.axvline(np.nanmean(data.flatten()), color='k', linestyle='dashed', linewidth=1)
-    min_ylim, max_ylim = plt.ylim()
-    plt.text(data[variable].mean() * 1.1,
-             max_ylim * (1 - 0.1 * x),
-             'Mean: {:.2f}'.format(data[variable].mean()))
+        ax.vlines(x=np.nanmean(data.flatten()),
+                  ymin=min_ylim,
+                  ymax=max_ylim,
+                  color='k',
+                  linestyle='dashed',
+                  linewidth=1)
+    ax.text(x=data[variable].mean() * 1.1,
+            y=max_ylim * (1 - 0.1 * x),
+            s='Mean: {:.2f}'.format(data[variable].mean()))
 
 
 # # plot a graph (network) on a map represented by a geopandas data frame
@@ -100,10 +110,10 @@ def meanline(data, variable=None, x=1):
 # plot a histogram comparing columns of a data frame
 
 
-def comp_hist(frame, colors, binw):
+def comp_hist(frame, colors, binw, ax):
     for i, col in enumerate(frame.columns):
         sns.histplot(data=frame, x=col, binwidth=binw, color=colors[i], label=col, alpha=0.5)
-        meanline(data=frame, variable=col, x=i + 5)
+        meanline(data=frame, variable=col, x=i + 5, ax=ax)
 
 
 def multi_plot(shape, suptitle='', ytext='', xtext=''):

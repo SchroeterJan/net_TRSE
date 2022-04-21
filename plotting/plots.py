@@ -9,7 +9,6 @@ plt.rc('font', size=24)
 sns.set_theme(style="ticks")
 
 
-
 def hist_modes(handler, travel_times):
     time_frame = pd.DataFrame(columns=travel_times)
     time_frame[travel_times[0]] = handler.bike.flatten()
@@ -20,7 +19,7 @@ def hist_modes(handler, travel_times):
 
     colors = ['red', 'blue']
 
-    comp_hist(frame=time_frame, colors=colors, binw=60)
+    comp_hist(frame=time_frame, colors=colors, binw=60, ax=ax)
 
     ax.set_title('Travel time histogram')
     ax.set_xlabel('Time in seconds')
@@ -38,7 +37,7 @@ def hist_flows(handler):
     data = pd.DataFrame(data=handler.flows.flatten(),
                         columns=['values'])
     sns.histplot(data, log_scale=True, legend=False)
-    meanline(data=data, variable='values')
+    meanline(data=data, variable='values', ax=ax)
     ax.set_title('Passenger flow histogram')
     ax.margins(x=0)
     plt.xlabel('Passengers between two areas')
@@ -47,20 +46,39 @@ def hist_flows(handler):
     plt.close(f)
 
 
-def hist_se(handler):
-    se_names = [r'$Ed_L$', r'$Ed_M$', r'$Ed_H$', r'$In$', r'$UE$']
+def hist_se(data, title, filename):
+    f, ax = plt.subplots(nrows=len(census_variables), ncols=1, figsize=(7, len(census_variables)*5))
+    sns.despine(f)
     for i, variable in enumerate(census_variables):
-        f, ax = plt.subplots(figsize=(7, 5))
-        sns.despine(f)
+        data[variable] = data[variable].replace(to_replace=0.0, value=np.nan)
+        # ax[i].hist(x=handler.neighborhood_se[variable])
+        sns.histplot(data=data, x=variable, ax=ax[i])
+        meanline(data=data, variable=variable, x=i + 1, ax=ax[i])
+        ax[i].set_xlabel(census_names[i] + ' in %')
+        ax[i].margins(x=0)
+    f.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(fname=os.path.join(path_hist_se, filename))
+    plt.close(f)
 
-        handler.neighborhood_se[variable] = handler.neighborhood_se[variable].replace(to_replace=0.0, value=np.nan)
-        sns.histplot(data=handler.neighborhood_se, x=variable)
-        meanline(data=handler.neighborhood_se, variable=variable, x=i + 1)
-        ax.set_title('Distribution of ' + se_names[i])
-        ax.margins(x=0)
-        plt.tight_layout()
-        plt.savefig(fname=os.path.join(path_hist_se, variable + '_hist'))
-        plt.close(f)
+
+def skat_comp(data, mode, title, filename):
+    f, ax = plt.subplots(nrows=len(census_variables), ncols=1, figsize=(7, len(census_variables)*5))
+    sns.despine(f)
+    for i, variable in enumerate(census_variables):
+        # data[variable] = data[variable].replace(to_replace=0.0, value=np.nan)
+        # ax[i].hist(x=handler.neighborhood_se[variable])
+        ax[i].scatter(data[variable + '_av'], data[mode + '_av'])
+        # meanline(data=data, variable=variable, x=i + 1, ax=ax[i])
+        ax[i].set_xlabel(census_names[i])
+        ax[i].set_xlim(xmin=0)
+        ax[i].set_ylim(ymin=0)
+        for j, txt in enumerate(data['Compartment']):
+            ax[i].annotate(txt, (data[variable + '_av'].values[j], data[mode + '_av'].values[j]))
+    f.suptitle(title)
+    plt.tight_layout()
+    plt.savefig(fname=os.path.join(path_comp, filename))
+    plt.close(f)
 
 
 def se_maps(handler):
@@ -79,7 +97,7 @@ def se_maps(handler):
     plt.savefig(fname=os.path.join(path_maps, 'se_variables_maps'))
 
 
-def hist_SME(data, modes):
+def hist_me(data, modes):
     f, ax = plt.subplots(figsize=(7, 5))
     sns.despine(f)
     data = data[modes]
@@ -87,7 +105,7 @@ def hist_SME(data, modes):
 
     colors = ['red', 'blue']
 
-    comp_hist(frame=data, colors=colors, binw=0.2)
+    comp_hist(frame=data, colors=colors, binw=0.2, ax=ax)
 
     ax.set_title('Histogram of ' + r'$SME$')
     ax.set_xlabel('Summed Modal Efficiency')
@@ -98,7 +116,7 @@ def hist_SME(data, modes):
     plt.close(f)
 
 
-def me_map(data, column, mode):
+def sme_map(data, column, mode):
 
     f, ax = plt.subplots(figsize=(8, 8))
     sns.despine(f)
@@ -134,7 +152,6 @@ def skat_acc_map(total_geo, mode, dissolved_geo):
     # plt.close(f)
 
 
-
 def hist_qij(handler, travel_times):
     # time_frame = pd.DataFrame(columns=travel_times)
     time_frame = pd.concat([pd.DataFrame(handler.bike_qij), pd.DataFrame(handler.otp_qij)],
@@ -146,10 +163,10 @@ def hist_qij(handler, travel_times):
 
     colors = ['red', 'blue']
 
-    comp_hist(frame=time_frame, colors=colors, binw=0.2)
+    comp_hist(frame=time_frame, colors=colors, binw=0.2, ax=ax)
 
     ax.set_title('Histogram for ' + r'$1/qt_{ij}$')
-    ax.set_xlabel('Theoretical velocity in ' + r'$km/h$')
+    ax.set_xlabel('Modal Efficiency in ' + r'$km/h$')
     ax.margins(x=0)
     plt.tight_layout()
     plt.legend()
@@ -189,6 +206,78 @@ def skat_plot(geo_df, labels, title, labels_or=None):
 
     # adjust_text(texts)
     plt.tight_layout()
+
+
+def plot_mat(mat, title, file, sort, std_vec=None):
+    mat = np.round(mat, 2)
+    if std_vec is not None:
+        fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(7, 5))
+        cax2 = ax2.matshow(std_vec, cmap='Blues')
+        ax2.get_xaxis().set_visible(False)
+        ax2.set_yticks(list(range(len(mat))), sort)
+        ax2.set_title('$\sigma$')
+        for i in range(len(mat)):
+            ax2.text(0, i, str(std_vec[i][0]), va='center', ha='center', fontsize=7)
+    else:
+        fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
+
+
+    cax = ax1.matshow(mat, cmap='magma_r')
+    fig.colorbar(mappable=cax, ax=ax1, orientation='horizontal', fraction=0.046, pad=0.04)
+
+    for i in range(len(mat)):
+        for j in range(len(mat)):
+            if i > j:
+                c = mat[j, i]
+                if not np.isnan(c):
+                    ax1.text(i, j, str(c), va='center', ha='center', fontsize=7)
+
+    ax1.set_xticks(list(range(len(mat))), sort)
+    ax1.set_yticks(list(range(len(mat))), sort)
+    fig.suptitle('Resemblance Matrix for ' + title, fontsize=18)
+    plt.tight_layout()
+    plt.savefig(os.path.join(path_comp, 'Matrix_' + file))
+    plt.close()
+
+
+def plot_clust_val():
+    df = pd.read_csv(filepath_or_buffer=os.path.join(path_experiments, 'clust_val_scores.csv'))
+
+    fig, ax1 = plt.subplots()
+    x_ = list(range(2, len(df['ch'].values[:58]) + 2))
+    ax1.plot(x_, df['ch'].values[:58], 'g-')
+    fig.subplots_adjust(right=0.75)
+    ax2 = ax1.twinx()
+    ax2.plot(x_, df['db'].values[:58], 'b-')
+    ax3 = ax1.twinx()
+    ax3.plot(x_, df['sil'].values[:58], 'r-')
+
+    ax3.spines.right.set_position(("axes", 1.2))
+
+    ax1.set_title('Number of Clusters for Regionalization')
+    ax1.set_xlabel('Number of Clusters')
+    ax1.set_ylabel('Caliski-Harabasz Score', color='g')
+    ax2.set_ylabel('Davies-Bouldin Score', color='b')
+    ax3.set_ylabel('Silhouette Score', color='r')
+
+    ymin, ymax = plt.ylim()
+    a = 18
+    plt.vlines(x=a, ymax=ymax, ymin=ymin, color='b')
+    plt.text(a, 0.5, str(a))
+    b = 14
+    plt.vlines(x=b, ymax=ymax, ymin=ymin, color='r')
+    plt.text(b, 0.5, str(b))
+    c = 33
+    plt.vlines(x=c, ymax=ymax, ymin=ymin, color='g')
+    plt.text(c, 0.5, str(c))
+
+    x_ticks = [0, b, a, c, 40, 50]
+    ax1.set_xticks(x_ticks)
+    x_tick_label = list(np.array(x_ticks) +2)
+    ax1.set_xticklabels(x_tick_label)
+
+    plt.savefig(os.path.join(path_explore, 'skater_validation'))
+    plt.close()
 
 
 def animate_skater(c):
@@ -247,7 +336,7 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
         cb.set_label('counts')
         axs.set_xlabel(xlabel=xlabel)
         axs.set_ylabel(ylabel=ylabel)
-        axs.set_title(label='Heatscatter of theoretical velocity ' + r'$1/qt_{ij}$' +' for ' + title)
+        axs.set_title(label='Heatscatter of Modal Efficiency ' + r'$1/qt_{ij}$' +' for ' + title)
         #axs.margins(x=0)
 
 
@@ -294,7 +383,7 @@ def hist_clust(data, modes):
 
     colors = ['red', 'blue']
 
-    comp_hist(frame=data, colors=colors, binw=0.005)
+    comp_hist(frame=data, colors=colors, binw=0.005, ax=ax)
 
     ax.set_title('Histogram of ' + r'$\widetilde{C}$')
     ax.set_xlabel('Weighted clustering coefficient')
@@ -321,7 +410,6 @@ def clust_map(data, column, mode, circles):
     plt.tight_layout()
     plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode))
     plt.close(f)
-
 
 
 def trse_box(data, labels, feature, acc):
