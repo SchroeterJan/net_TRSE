@@ -3,6 +3,8 @@ import matplotlib.image as mgimg
 from matplotlib import animation
 import matplotlib.colors as mcolors
 import matplotlib.transforms as transforms
+import matplotlib as mpl
+
 
 plt.style.use('seaborn')  # pretty matplotlib plots
 plt.rc('font', size=24)
@@ -46,73 +48,106 @@ def hist_flows(handler):
     plt.close(f)
 
 
-def hist_se(data, title, filename):
-    f, ax = plt.subplots(nrows=len(census_variables), ncols=1, figsize=(7, len(census_variables)*5))
-    sns.despine(f)
+def explore_se(data):
+    geo_frame = geopandas.GeoDataFrame(data=data,
+                                       geometry=geopandas.GeoSeries.from_wkt(data.geometry))
     for i, variable in enumerate(census_variables):
+        f, ax = plt.subplots(nrows=1, ncols=2, gridspec_kw={'width_ratios': [2, 1]})
+        sns.despine(f)
         data[variable] = data[variable].replace(to_replace=0.0, value=np.nan)
         # ax[i].hist(x=handler.neighborhood_se[variable])
-        sns.histplot(data=data, x=variable, ax=ax[i])
-        meanline(data=data, variable=variable, x=i + 1, ax=ax[i])
-        ax[i].set_xlabel(census_names[i] + ' in %')
-        ax[i].margins(x=0)
+
+        vmax = np.nanmean(geo_frame[variable].values) + 3 * np.nanstd(geo_frame[variable].values)
+        if len(geo_frame[variable].values[geo_frame[variable].values > vmax]) == 0:
+            vmax=None
+
+        geo_plot(frame=geo_frame,
+                 axis=ax[0],
+                 column=variable,
+                 vmax=vmax
+                 )
+        ax[0].set_title('Spatial Arrangement of ' + census_names[i])
+        sns.histplot(data=data, x=variable, ax=ax[1])
+        meanline(data=data, variable=variable, x=i + 1, ax=ax[1])
+        ax[1].set_xlabel(census_names[i] + ' in %')
+        # ax.margins(x=0)
+        ax[1].set_title('Distribution of ' + census_names[i])
+        plt.xlabel(census_names[i] + ' in %')
+        plt.tight_layout()
+        plt.savefig(fname=os.path.join(path_hist_se, variable))
+        plt.close(f)
+
+
+# def skat_comp(data, mode, title, filename):
+#     f, ax = plt.subplots(nrows=len(census_variables), ncols=1, figsize=(7, len(census_variables) * 5))
+#     sns.despine(f)
+#     for i, variable in enumerate(census_variables):
+#         # data[variable] = data[variable].replace(to_replace=0.0, value=np.nan)
+#         # ax[i].hist(x=handler.neighborhood_se[variable])
+#         ax[i].scatter(data[variable + '_av'], data[mode + '_av'])
+#         # meanline(data=data, variable=variable, x=i + 1, ax=ax[i])
+#         ax[i].set_xlabel(census_names[i])
+#         ax[i].set_xlim(xmin=0)
+#         ax[i].set_ylim(ymin=0)
+#         for j, txt in enumerate(data['Compartment']):
+#             ax[i].annotate(txt, (data[variable + '_av'].values[j], data[mode + '_av'].values[j]))
+#     f.suptitle(title)
+#     plt.tight_layout()
+#     plt.savefig(fname=os.path.join(path_comp, filename))
+#     plt.close(f)
+
+
+
+
+
+def skat_comp(data, modes, mode_names, title, file, size_factor=None, annotate=False):
+    f, ax = plt.subplots(nrows=len(census_variables),
+                         ncols=len(modes),
+                         sharex='col',
+                         sharey='row',
+                         figsize=(5, 7))
+    for j, variable in enumerate(census_variables):
+        colors = ['r', 'b']
+        i = 0
+        if annotate:
+            ax[j][i].set_ylabel('$\overline{' + census_names[j][1:-1] + '}$')
+        else:
+            s = mpl.rcParams['lines.markersize'] ** 2 * 0.5
+            ax[j][i].set_ylabel(census_names[j])
+        for mode in modes:
+            if annotate:
+                s = data[mode + '_std'].values * size_factor * mpl.rcParams['lines.markersize'] ** 2
+            miss_se = np.isnan(data[variable].values)
+            corr = np.corrcoef(data[variable].values[np.invert(miss_se)],
+                               data[mode].values[np.invert(miss_se)])[0, 1]
+            ax[j][i].scatter(x=data[mode].values,
+                             y=data[variable].values,
+                             s=s,
+                             # s=0.5 * mpl.rcParams['lines.markersize'] ** 2,
+                             marker='.',
+                             color=colors[i],
+                             label=round(corr, 4)
+                             )
+            if annotate:
+                texts = [ax[j][i].annotate(text=txt,
+                                           xy=(data[mode].values[k], data[variable].values[k]),
+                                           fontsize=8) for k, txt in enumerate(data['Compartment'].values)]
+            leg = ax[j][i].legend(loc="best", title="$\\rho$")
+            for item in leg.legendHandles:
+                item.set_visible(False)
+            ax[j][i].set_ylim(bottom=0.0)
+            ax[j][i].spines['top'].set_visible(False)
+            ax[j][i].spines['right'].set_visible(False)
+            i += 1
+    if annotate:
+        ax[j][1].set_xlabel('$\overline{' + mode_names[1][1:-1] + '}$')
+        ax[j][0].set_xlabel('$\overline{' + mode_names[0][1:-1] + '}$')
+    else:
+        ax[j][1].set_xlabel(mode_names[1])
+        ax[j][0].set_xlabel(mode_names[0])
     f.suptitle(title)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_hist_se, filename))
-    plt.close(f)
-
-
-def skat_comp(data, mode, title, filename):
-    f, ax = plt.subplots(nrows=len(census_variables), ncols=1, figsize=(7, len(census_variables)*5))
-    sns.despine(f)
-    for i, variable in enumerate(census_variables):
-        # data[variable] = data[variable].replace(to_replace=0.0, value=np.nan)
-        # ax[i].hist(x=handler.neighborhood_se[variable])
-        ax[i].scatter(data[variable + '_av'], data[mode + '_av'])
-        # meanline(data=data, variable=variable, x=i + 1, ax=ax[i])
-        ax[i].set_xlabel(census_names[i])
-        ax[i].set_xlim(xmin=0)
-        ax[i].set_ylim(ymin=0)
-        for j, txt in enumerate(data['Compartment']):
-            ax[i].annotate(txt, (data[variable + '_av'].values[j], data[mode + '_av'].values[j]))
-    f.suptitle(title)
-    plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_comp, filename))
-    plt.close(f)
-
-
-def se_maps(handler):
-    geo_frame = geopandas.GeoDataFrame(geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-    fig, axes = multi_plot(shape=[2, 3])
-    axes = axes.flatten()
-    for i, each in enumerate(census_variables):
-        if each == 'IHHINK_GEM':
-            handler.neighborhood_se[handler.neighborhood_se[each] > 100000.0] = 100000.0
-        elif each == 'PREGWERKL_P':
-            handler.neighborhood_se[handler.neighborhood_se[each] > 30.0] = 30.0
-
-        geo_frame[each] = handler.neighborhood_se[each]
-        geo_plot(frame=geo_frame, axis=axes[i], column=each, cmap='OrRd')
-        axes[i].set_title(label=each)
-    plt.savefig(fname=os.path.join(path_maps, 'se_variables_maps'))
-
-
-def hist_me(data, modes):
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
-    data = data[modes]
-    data.set_axis(['Bike', 'Public Transport'], axis=1, inplace=True)
-
-    colors = ['red', 'blue']
-
-    comp_hist(frame=data, colors=colors, binw=0.2, ax=ax)
-
-    ax.set_title('Histogram of ' + r'$SME$')
-    ax.set_xlabel('Summed Modal Efficiency')
-    ax.margins(x=0)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig(fname=os.path.join(path_q, 'q_comp'))
+    plt.savefig(fname=os.path.join(path_comp, 'scat_comp_' + file))
     plt.close(f)
 
 
@@ -153,7 +188,6 @@ def skat_acc_map(total_geo, mode, dissolved_geo):
 
 
 def hist_qij(handler, travel_times):
-    # time_frame = pd.DataFrame(columns=travel_times)
     time_frame = pd.concat([pd.DataFrame(handler.bike_qij), pd.DataFrame(handler.otp_qij)],
                            axis=1)
     time_frame = time_frame.set_axis(travel_times, axis=1, inplace=False)
@@ -174,6 +208,29 @@ def hist_qij(handler, travel_times):
     plt.close(f)
 
 
+def hist_acc(data, modes, mode_names, title, file):
+    f, ax = plt.subplots(ncols=2, figsize=(7, 5))
+
+    sns.despine(f)
+    # data = data[modes]
+    # data.set_axis(['Bike', 'Public Transport'], axis=1, inplace=True)
+
+    colors = ['red', 'blue']
+    for i, mode in enumerate(modes):
+        ax[i].hist(data[mode].values, color=colors[i], bins=40)
+        ax[i].set_xlabel(mode_names[i])
+        ax[i].set_ylabel('Count')
+
+    # comp_hist(frame=data, colors=colors, binw=0.2, ax=ax)
+
+    f.suptitle(title)
+    # ax.margins(x=0)
+    plt.tight_layout()
+    # plt.legend()
+    plt.savefig(fname=os.path.join(path_q, file))
+    plt.close(f)
+
+
 def mst_plot(g, pos, geo_df):
     fig, ax = plt.subplots(figsize=(20, 15))
     ax = geo_df.plot()
@@ -185,7 +242,8 @@ def mst_plot(g, pos, geo_df):
 
 
 def skat_plot(geo_df, labels, title, labels_or=None):
-    geo_df['skater_new'] = labels
+    label_col = 'label'
+    geo_df[label_col] = labels
 
     colors1 = plt.cm.tab20b(np.linspace(0., 1, 128))
     colors2 = plt.cm.tab20c(np.linspace(0, 1, 128))
@@ -193,7 +251,13 @@ def skat_plot(geo_df, labels, title, labels_or=None):
     colors = np.vstack((colors1, colors2))
     mymap = mcolors.LinearSegmentedColormap.from_list('my_colormap', colors)
 
-    ax = geo_df.plot(column='skater_new', categorical=True, figsize=(12, 8), edgecolor='w', cmap=mymap)
+    ax = geo_df.plot(column=label_col,
+                     categorical=True,
+                     figsize=(12, 8),
+                     cmap=mymap,
+                     linewidth=0.0
+                     )
+    geo_df.dissolve(by=label_col).boundary.plot(ax=ax, edgecolor='w')
     ax.set_title(title, fontsize=20)
     ax.set_axis_off()
     if labels_or is None:
@@ -208,33 +272,25 @@ def skat_plot(geo_df, labels, title, labels_or=None):
     plt.tight_layout()
 
 
-def plot_mat(mat, title, file, sort, std_vec=None):
+def plot_mat(mat, title, file, sort):
     mat = np.round(mat, 2)
-    if std_vec is not None:
-        fig, (ax1, ax2) = plt.subplots(nrows=1, ncols=2, figsize=(7, 5))
-        cax2 = ax2.matshow(std_vec, cmap='Blues')
-        ax2.get_xaxis().set_visible(False)
-        ax2.set_yticks(list(range(len(mat))), sort)
-        ax2.set_title('$\sigma$')
-        for i in range(len(mat)):
-            ax2.text(0, i, str(std_vec[i][0]), va='center', ha='center', fontsize=7)
-    else:
-        fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(7, 5))
+    fig, ax1 = plt.subplots(nrows=1, ncols=1)
 
 
     cax = ax1.matshow(mat, cmap='magma_r')
-    fig.colorbar(mappable=cax, ax=ax1, orientation='horizontal', fraction=0.046, pad=0.04)
+    cbar = fig.colorbar(mappable=cax, ax=ax1, orientation='horizontal', fraction=0.046, pad=0.04)
+    cbar.set_label('$d_{GA}$')
 
-    for i in range(len(mat)):
-        for j in range(len(mat)):
-            if i > j:
-                c = mat[j, i]
-                if not np.isnan(c):
-                    ax1.text(i, j, str(c), va='center', ha='center', fontsize=7)
+    # for i in range(len(mat)):
+    #     for j in range(len(mat)):
+    #         if i > j:
+    #             c = mat[j, i]
+    #             if not np.isnan(c):
+    #                 ax1.text(i, j, str(c), va='center', ha='center', fontsize=7)
 
     ax1.set_xticks(list(range(len(mat))), sort)
     ax1.set_yticks(list(range(len(mat))), sort)
-    fig.suptitle('Resemblance Matrix for ' + title, fontsize=18)
+    fig.suptitle('Dissimilarity Matrix for ' + title, fontsize=18)
     plt.tight_layout()
     plt.savefig(os.path.join(path_comp, 'Matrix_' + file))
     plt.close()
@@ -246,35 +302,35 @@ def plot_clust_val():
     fig, ax1 = plt.subplots()
     x_ = list(range(2, len(df['ch'].values[:58]) + 2))
     ax1.plot(x_, df['ch'].values[:58], 'g-')
-    fig.subplots_adjust(right=0.75)
+    # fig.subplots_adjust(right=0.75)
     ax2 = ax1.twinx()
     ax2.plot(x_, df['db'].values[:58], 'b-')
-    ax3 = ax1.twinx()
-    ax3.plot(x_, df['sil'].values[:58], 'r-')
+    # ax3 = ax1.twinx()
+    # ax3.plot(x_, df['sil'].values[:58], 'r-')
 
-    ax3.spines.right.set_position(("axes", 1.2))
+    # ax3.spines.right.set_position(("axes", 1.2))
 
-    ax1.set_title('Number of Clusters for Regionalization')
+    ax1.set_title('Clustering Validation of SKATER Results')
     ax1.set_xlabel('Number of Clusters')
     ax1.set_ylabel('Caliski-Harabasz Score', color='g')
     ax2.set_ylabel('Davies-Bouldin Score', color='b')
-    ax3.set_ylabel('Silhouette Score', color='r')
+    # ax3.set_ylabel('Silhouette Score', color='r')
 
     ymin, ymax = plt.ylim()
     a = 18
     plt.vlines(x=a, ymax=ymax, ymin=ymin, color='b')
-    plt.text(a, 0.5, str(a))
-    b = 14
-    plt.vlines(x=b, ymax=ymax, ymin=ymin, color='r')
-    plt.text(b, 0.5, str(b))
-    c = 33
+    plt.text(a-1, 0.5, str(a))
+    # b = 14
+    # plt.vlines(x=b, ymax=ymax, ymin=ymin, color='r')
+    # plt.text(b, 0.5, str(b))
+    c = 27
     plt.vlines(x=c, ymax=ymax, ymin=ymin, color='g')
-    plt.text(c, 0.5, str(c))
+    plt.text(c-1, 0.5, str(c))
 
-    x_ticks = [0, b, a, c, 40, 50]
-    ax1.set_xticks(x_ticks)
-    x_tick_label = list(np.array(x_ticks) +2)
-    ax1.set_xticklabels(x_tick_label)
+    # x_ticks = [0, 10, a, c, 40, 50]
+    # ax1.set_xticks(x_ticks)
+    # x_tick_label = list(np.array(x_ticks) + 2)
+    # ax1.set_xticklabels(x_tick_label)
 
     plt.savefig(os.path.join(path_explore, 'skater_validation'))
     plt.close()
@@ -375,32 +431,17 @@ def heatscatter(x, y, xlabel='', ylabel='', title='', log=False, multi=False, av
         plt.close(fig)
 
 
-def hist_clust(data, modes):
-    f, ax = plt.subplots(figsize=(7, 5))
-    sns.despine(f)
-    data = data[modes]
-    data.set_axis(['Bike', 'Public Transport'], axis=1, inplace=True)
-
-    colors = ['red', 'blue']
-
-    comp_hist(frame=data, colors=colors, binw=0.005, ax=ax)
-
-    ax.set_title('Histogram of ' + r'$\widetilde{C}$')
-    ax.set_xlabel('Weighted clustering coefficient')
-    #ax.margins(x=0)
-    plt.tight_layout()
-    plt.legend()
-    plt.savefig(fname=os.path.join(path_hists, 'clust_comp'))
-    plt.close(f)
 
 
-def clust_map(data, column, mode, circles):
+
+def clust_map(data, column, mode, circles=False):
     f, ax = plt.subplots(figsize=(8, 8))
     sns.despine(f)
 
     geo_plot(frame=data,
              column=column,
              axis=ax,
+             reverse=True,
              legend='Weighted Clustering Coefficient',
              circles=circles)
 
@@ -408,7 +449,10 @@ def clust_map(data, column, mode, circles):
     ax.set_title('Spatial distribution of ' + r'$\widetilde{C}$ for ' + mode, fontdict=dict(fontsize=18))
     ax.margins(x=0)
     plt.tight_layout()
-    plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode))
+    if circles:
+        plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode + '_circles'))
+    else:
+        plt.savefig(fname=os.path.join(path_maps, 'clust_map_' + mode))
     plt.close(f)
 
 
