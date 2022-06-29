@@ -67,7 +67,7 @@ def clust_val(cust_adj, geo_df):
 
     while no_clust <= 60:
         print(str(no_clust))
-        skat_res = skater_clust(c=no_clust, adj=cust_adj.adj_g)
+        skat_res = skater_clust(c=no_clust, adj=cust_adj.adj_g, geo_df=geo_df)
 
         stats = skat_stats(geo_df=geo_df,
                            model=census_variables,
@@ -100,7 +100,7 @@ def clust_val(cust_adj, geo_df):
     df['sil'] = sil_list
     df['db'] = db_list
     df['ch'] = ch_list
-    df.to_csv(path_or_buf=os.path.join(path_experiments, 'clust_val_scores.csv'), index=False)
+    df.to_csv(path_or_buf=os.path.join(path_experiments, 'clust_val_scores_new.csv'), index=False)
 
 
     # sil_list = [0.22118633427355566, 0.22118633427355566, 0.22118633427355566, 0.15269366089283506, 0.15006885802946704, 0.14399401272453471, 0.07012901134767123, 0.020673749825380127, 0.020673749825380127, 0.012406808792345632, -0.20810364862894634, -0.20810364862894634, -0.2553692114815241, -0.2626632029886848, -0.2627159087368904, -0.2705718658169019, -0.26768315357663325, -0.26119807553420105, -0.24798550759281365, -0.2508402474426239, -0.24396620832615382, -0.24193786782865903, -0.2995364748446231, -0.29507754063847913, -0.2842606035256934, -0.288786762093491, -0.288786762093491, -0.288786762093491, -0.29213850567117244, -0.29213850567117244, -0.2892136290743805, -0.2844198213131269, -0.2844198213131269, -0.27851432506184026, -0.27851432506184026, -0.28051783617573944, -0.2841937721666401, -0.2738390285403339, -0.2746761832474103, -0.30664091866345106, -0.3338826564188573, -0.3338826564188573, -0.3445802148786286, -0.347285760589586, -0.3467536328334411, -0.35627064692272004, -0.3531629025977028, -0.35195807157893466, -0.3533754920843631, -0.3533754920843631, -0.3533754920843631, -0.3548179019573724, -0.3548179019573724, -0.35699035850127464, -0.35424028728468265, -0.35424028728468265, -0.35424028728468265, -0.35424028728468265, -0.3496872120874082]
@@ -122,20 +122,17 @@ handler.matrices()
 # se_year()
 # hist_modes(handler, travel_times)
 # hist_flows(handler)
-# hist_se(data=handler.neighborhood_se,
-#         title='Distributions of Socioeconomic Variables',
-#         filename='se_hist')
-# se_maps(handler)
+# explore_se(data=handler.neighborhood_se)                           # create histograms of socioeconomic variables
 
 
-# handler.stat_prep(vars=census_variables)
-# geo_df = geopandas.GeoDataFrame(data=handler.model_,
-#                                 crs=crs_proj,
-#                                 geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-# geo_df.reset_index(inplace=True, drop=True)
-#
-# w_queen = weights.Queen.from_dataframe(df=geo_df, geom_col='geometry')
-# cust_adj = Adj_Islands(geo_frame=geo_df, g_init=w_queen.to_networkx())
-#
+handler.stat_prep(vars=census_variables)
+geo_df = geopandas.GeoDataFrame(data=handler.model_,
+                                crs=crs_proj,
+                                geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+geo_df.reset_index(inplace=True, drop=True)
+
+w_queen = weights.Queen.from_dataframe(df=geo_df, geom_col='geometry')
+cust_adj = Adj_Islands(geo_frame=geo_df, g_init=w_queen.to_networkx())
+
 # clust_val(cust_adj=cust_adj, geo_df=geo_df)
-# plot_clust_val()
+plot_clust_val()

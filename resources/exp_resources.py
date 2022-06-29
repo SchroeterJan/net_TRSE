@@ -61,9 +61,6 @@ class DataHandling:
         self.neighborhood_se['edu_score'] = scores
 
     def stat_prep(self, vars):
-        # for var in model_variables:
-        #     self.neighborhood_se[var] = reject_outliers(self.neighborhood_se[var].to_numpy(),
-        #                                                 m=3.0)
         x_scaled = normalize(x=self.neighborhood_se[vars].values.reshape(-len(vars), len(vars)))
         self.model_ = pd.DataFrame(data=x_scaled,
                                    columns=vars,
@@ -91,16 +88,7 @@ class DataHandling:
         for neighborhood in self.neighborhood_se[column_names['geo_id_col']]:
             self.graph.add_node(neighborhood)
 
-    def choose_mode(self, mode):
-        if mode == 'pt':
-            return self.otp
-        elif mode == 'bike':
-            return self.bike
-        else:
-            print('PICKED MODE IS NOT PREDEFINED - PLEASE SPECIFY \'pt\' or \'bike\'')
-
-    def add_edges(self, mode):
-        matrix = self.choose_mode(mode=mode)
+    def add_edges(self, matrix):
         matrix = np.nan_to_num(matrix)
         # create edges between all nodes and populate them with travel times as weights
         for i, row in enumerate(matrix):
@@ -200,7 +188,7 @@ def geo_pos(geo_df):
     return pos
 
 
-def skater_clust(c, adj, geo_df, store=False):
+def skater_clust(c, adj, geo_df, model, store=False):
 
     skater_w = weights.Queen.from_networkx(graph=adj)
 
@@ -220,7 +208,7 @@ def skater_clust(c, adj, geo_df, store=False):
 
     skat_calc = skat_lib.Skater(gdf=geo_df,
                                 w=skater_w,
-                                attrs_name=census_variables,
+                                attrs_name=model,
                                 n_clusters=c,
                                 floor=1,
                                 trace=False,
@@ -234,7 +222,7 @@ def skater_clust(c, adj, geo_df, store=False):
         skat_calc.solve()
 
     if store:
-        np.save(file=os.path.join(path_experiments, 'reg_result'), arr=skat_calc.labels_)
+        np.save(file=os.path.join(path_experiments, 'reg_result_' + str(c)), arr=skat_calc.labels_)
 
     return skat_calc
 
@@ -259,10 +247,10 @@ def skat_stats(geo_df, skat_labels, or_data, model=None, spanning=None, print_la
             if spanning is not None:
                 skat_stat.at[comp_no, 'SSD'] = round(spanning.score(data=comp_data, labels=np.zeros(len(comp_data))), 3)
                 skat_stat.at[comp_no, 'SSD/Vertice'] = round(skat_stat['SSD'][comp_no] / skat_stat['#Vertices'][comp_no], 3)
-            for var in model:
-                skat_stat.at[comp_no, var + '_av'] = round(comp_data[var].mean(), 2)
-                skat_stat.at[comp_no, var + '_std'] = round(comp_data[var].std(), 2)
-
+            if model != census_variables:
+                for var in model:
+                    skat_stat.at[comp_no, var] = round(comp_data[var].mean(), 2)
+                    skat_stat.at[comp_no, var + '_std'] = round(comp_data[var].std(), 2)
         for c_var in reversed(census_variables):
             skat_stat.at[comp_no, c_var + '_av'] = round(comp_data_or[c_var].mean(), 2)
             skat_stat.at[comp_no, c_var + '_std'] = round(comp_data_or[c_var].std(), 2)

@@ -6,6 +6,7 @@ def modal_efficiency():
     handler.bike_qij = reject_outliers(handler.bike_qij.flatten()[~np.isnan(handler.bike_qij.flatten())], m=12.)
     handler.otp_qij = handler.otp_qij.flatten()[~np.isnan(handler.otp_qij.flatten())]
 
+    hist_qij(handler=handler, travel_times=travel_times)
 
     heatscatter(x=handler.bike.flatten()[~np.isnan(handler.bike.flatten())],
                 y=handler.euclid.flatten()[~np.isnan(handler.euclid.flatten())],
@@ -21,8 +22,6 @@ def modal_efficiency():
                 title='Public Transport',
                 av=True)
 
-    hist_qij(handler=handler, travel_times=travel_times)
-
 
 def sme():
     print('calculate velocities')
@@ -30,48 +29,57 @@ def sme():
     print('calculate modal efficiency')
     handler.get_q()
 
-    hist_me(data=handler.neighborhood_se, modes=['bike_q', 'otp_q'])
-
     geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
                                        geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
     sme_map(data=geo_frame, column='otp_q', mode='Public Transport')
     sme_map(data=geo_frame, column='bike_q', mode='Bike')
 
 
-def clust_coeff(calc=False, bike_discussion=False):
-    if calc:
-        handler.initiate_graph()
-        handler.add_edges(mode='pt')
-        print('calculate clustering coefficients for public transport')
-        cluster_dict = nx.clustering(handler.graph, weight='weight')
-        handler.neighborhood_se['otp_clust'] = np.array(list(cluster_dict.values()))
+def clust_coeff():
+    handler.initiate_graph()
+    handler.pt
+    print('calculate clustering coefficients for public transport')
+    cluster_dict = nx.clustering(handler.graph, weight='weight')
+    handler.neighborhood_se[clust_pt] = np.array(list(cluster_dict.values()))
 
-        handler.initiate_graph()
-        handler.add_edges(mode='bike')
-        print('calculate clustering coefficients for bike')
-        cluster_dict = nx.clustering(handler.graph, weight='weight')
-        handler.neighborhood_se['bike_clust'] = np.array(list(cluster_dict.values()))
-    else:
-        hist_clust(data=handler.neighborhood_se, modes=['bike_clust', 'otp_clust'])
-
-        geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
-                                           geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
-        #clust_map(data=geo_frame, column='otp_clust', mode='Public Transport')
-        clust_map(data=geo_frame, column='bike_clust', mode='Bike', circles=bike_discussion)
+    handler.initiate_graph()
+    handler.bike
+    print('calculate clustering coefficients for bike')
+    cluster_dict = nx.clustering(handler.graph, weight='weight')
+    handler.neighborhood_se[clust_bike] = np.array(list(cluster_dict.values()))
 
 
-handler = DataHandling()
-handler.matrices()
+# handler = DataHandling()
+# handler.matrices()
 
-modal_efficiency()
+# modal_efficiency()
 
-handler.bike[handler.bike > 2400.0] = np.nan
-handler.otp[handler.otp > 2700.0] = np.nan
+# handler.bike[handler.bike > 2400.0] = np.nan
+# handler.otp[handler.otp > 2700.0] = np.nan
 
-sme()
-clust_coeff(calc=True)
-handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
+# sme()
+# clust_coeff()
+# handler.neighborhood_se.to_csv(os.path.join(path_experiments, file_neighborhood_se))
 handler = DataHandling(new=True)
 handler.matrices()
 
-clust_coeff(bike_discussion=True)
+hist_acc(data=handler.neighborhood_se,
+        modes=[sme_bike, sme_pt],
+        mode_names=[sme_bike_name, sme_pt_name],
+        title='Distributions of Summed Modal Efficiencies',
+        file='sme')
+hist_acc(data=handler.neighborhood_se,
+         modes=[clust_bike, clust_pt],
+         mode_names=[clust_bike_name, clust_pt_name],
+         title='Distributions of Weighted Clustering Coefficients',
+         file='clust')
+
+
+
+geo_frame = geopandas.GeoDataFrame(data=handler.neighborhood_se,
+                                   geometry=geopandas.GeoSeries.from_wkt(handler.neighborhood_se.geometry))
+clust_map(data=geo_frame, column=clust_pt, mode='Public Transport')
+clust_map(data=geo_frame, column=clust_bike, mode='Bike')
+clust_map(data=geo_frame, column=clust_bike, mode='Bike', circles=True)
+
+

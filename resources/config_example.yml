@@ -37,6 +37,7 @@ column_names :
 exclude_stops : ['']
 # identifiers for relevant census variables
 census_variables : ['']
+census_names : ['']
 
 scaling_variables : ['', '']
 

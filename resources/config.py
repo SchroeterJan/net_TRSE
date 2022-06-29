@@ -40,6 +40,17 @@ exclude_stops = vars['exclude_stops']
 
 # identifiers for relevant census variables
 census_variables = vars['census_variables']
+census_names = vars['census_names']
+
+sme_bike = vars['sme_bike']
+sme_bike_name = vars['sme_bike_name']
+sme_pt = vars['sme_pt']
+sme_pt_name = vars['sme_pt_name']
+
+clust_bike = vars['clust_bike']
+clust_bike_name = vars['clust_bike_name']
+clust_pt = vars['clust_pt']
+clust_pt_name = vars['clust_pt_name']
 
 # limit for Population density in people/km^2
 min_popdens = vars['min_popdens']
@@ -102,9 +113,9 @@ if not os.path.isdir(path_maps):
 path_q = os.path.join(path_hists, 'q_acc')
 if not os.path.isdir(path_q):
     os.mkdir(path_q)
-path_skater = os.path.join(path_plot, 'skater')
-if not os.path.isdir(path_skater):
-    os.mkdir(path_skater)
+path_comp = os.path.join(path_plot, 'compare')
+if not os.path.isdir(path_comp):
+    os.mkdir(path_comp)
 
 
 # declare new path for experiment data
